@@ -88,6 +88,17 @@ class SettingsScreen extends ConsumerWidget {
             },
           ),
 
+          // Admin Management section (Owner only)
+          if (currentUser?.isOwner ?? false) ...[
+            const _SectionHeader(title: 'Admin'),
+            _MenuTile(
+              icon: Icons.group_outlined,
+              title: 'Kelola Admin',
+              subtitle: 'Tambah atau kelola akun admin',
+              onTap: () => context.push(AppRoutes.adminManagement),
+            ),
+          ],
+
           const SizedBox(height: AppSpacing.lg),
 
           // Logout button

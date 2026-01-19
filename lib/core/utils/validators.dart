@@ -2,13 +2,19 @@
 class Validators {
   Validators._();
 
+  /// Check if email format is valid
+  static bool isValidEmail(String? value) {
+    if (value == null || value.isEmpty) return false;
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    return emailRegex.hasMatch(value);
+  }
+
   /// Validate email format
   static String? validateEmail(String? value) {
     if (value == null || value.isEmpty) {
       return 'Email wajib diisi';
     }
-    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-    if (!emailRegex.hasMatch(value)) {
+    if (!isValidEmail(value)) {
       return 'Format email tidak valid';
     }
     return null;

@@ -3,15 +3,23 @@ class AuthResult {
   final bool success;
   final String? errorMessage;
   final String? errorCode;
+  final String? successMessage;
 
   const AuthResult({
     required this.success,
     this.errorMessage,
     this.errorCode,
+    this.successMessage,
   });
 
   /// Success result
   factory AuthResult.success() => const AuthResult(success: true);
+
+  /// Success result with custom message
+  factory AuthResult.successWithMessage(String message) => AuthResult(
+        success: true,
+        successMessage: message,
+      );
 
   /// Error result
   factory AuthResult.error(String message, {String? code}) => AuthResult(

@@ -17,8 +17,11 @@ class AppColors {
 
   // Semantic Colors
   static const Color success = Color(0xFF10B981); // Emerald-500
+  static const Color successLight = Color(0xFF34D399); // Emerald-400
   static const Color warning = Color(0xFFF59E0B); // Amber-500
+  static const Color warningLight = Color(0xFFFBBF24); // Amber-400
   static const Color error = Color(0xFFEF4444); // Red-500
+  static const Color errorLight = Color(0x80EF4444); // Red-500 with 50% opacity
   static const Color info = Color(0xFF3B82F6); // Blue-500
 
   // Neutral Colors

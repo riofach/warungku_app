@@ -93,11 +93,21 @@ class AuthNotifier extends Notifier<AppAuthState> {
     }
   }
 
-  Future<void> signOut() async {
+  /// Sign out current user
+  /// Returns true if successful, false if error occurred
+  Future<bool> signOut() async {
     state = AppAuthState.loading();
     final authRepo = ref.read(authRepositoryProvider);
-    await authRepo.signOut();
-    state = AppAuthState.unauthenticated();
+    final result = await authRepo.signOut();
+    
+    if (result.success) {
+      state = AppAuthState.unauthenticated();
+      return true;
+    } else {
+      // Logout failed - show error but stay in current state
+      state = AppAuthState.error(result.errorMessage ?? 'Gagal keluar dari aplikasi');
+      return false;
+    }
   }
 
   void clearError() {

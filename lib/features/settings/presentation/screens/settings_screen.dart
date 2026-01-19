@@ -1,16 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/services/supabase_service.dart';
+import '../../../../core/widgets/confirmation_dialog.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../auth/data/providers/auth_provider.dart';
 
 /// Settings/Menu screen
-class SettingsScreen extends StatelessWidget {
+/// FR48: Admin dapat melihat informasi akun dan profil warung
+/// FR4: Admin dapat logout dari aplikasi
+class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authNotifierProvider);
+    final currentUser = ref.watch(currentUserProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Menu'),
@@ -19,18 +27,18 @@ class SettingsScreen extends StatelessWidget {
         padding: const EdgeInsets.all(AppSpacing.screenPadding),
         children: [
           // Account section
-          _SectionHeader(title: 'Akun'),
+          const _SectionHeader(title: 'Akun'),
           _MenuTile(
             icon: Icons.person_outline,
             title: 'Profil Admin',
-            subtitle: SupabaseService.currentUser?.email ?? 'admin',
+            subtitle: currentUser?.email ?? 'admin',
             onTap: () {
               // TODO: Navigate to profile
             },
           ),
-          
+
           // Data Management section
-          _SectionHeader(title: 'Kelola Data'),
+          const _SectionHeader(title: 'Kelola Data'),
           _MenuTile(
             icon: Icons.inventory_2_outlined,
             title: 'Barang',
@@ -53,7 +61,7 @@ class SettingsScreen extends StatelessWidget {
           ),
 
           // Reports section
-          _SectionHeader(title: 'Laporan'),
+          const _SectionHeader(title: 'Laporan'),
           _MenuTile(
             icon: Icons.bar_chart_outlined,
             title: 'Laporan Penjualan',
@@ -62,7 +70,7 @@ class SettingsScreen extends StatelessWidget {
           ),
 
           // Settings section
-          _SectionHeader(title: 'Pengaturan'),
+          const _SectionHeader(title: 'Pengaturan'),
           _MenuTile(
             icon: Icons.schedule_outlined,
             title: 'Jam Operasional',
@@ -83,40 +91,80 @@ class SettingsScreen extends StatelessWidget {
           const SizedBox(height: AppSpacing.lg),
 
           // Logout button
-          OutlinedButton.icon(
-            onPressed: () async {
-              final confirmed = await showDialog<bool>(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Keluar'),
-                  content: const Text('Yakin ingin keluar dari aplikasi?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: const Text('Batal'),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      child: const Text('Keluar'),
-                    ),
-                  ],
-                ),
-              );
-
-              if (confirmed == true && context.mounted) {
-                await SupabaseService.signOut();
-                if (context.mounted) {
-                  context.go(AppRoutes.login);
-                }
-              }
+          _LogoutButton(
+            isLoading: authState.isLoading,
+            onLogout: () async {
+              await _handleLogout(context, ref);
             },
-            icon: const Icon(Icons.logout, color: AppColors.error),
-            label: const Text(
-              'Keluar',
-              style: TextStyle(color: AppColors.error),
-            ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Handle logout flow
+  /// Shows confirmation dialog, then calls AuthNotifier.signOut()
+  /// Shows error SnackBar if logout fails
+  Future<void> _handleLogout(BuildContext context, WidgetRef ref) async {
+    // Show confirmation dialog - AC2
+    final confirmed = await LogoutConfirmationDialog.show(context);
+
+    if (confirmed && context.mounted) {
+      // Call AuthNotifier.signOut() - AC3
+      final success = await ref.read(authNotifierProvider.notifier).signOut();
+
+      if (!success && context.mounted) {
+        // Show error message if logout failed
+        final authState = ref.read(authNotifierProvider);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(authState.errorMessage ?? 'Gagal keluar dari aplikasi'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+        // Clear the error state
+        ref.read(authNotifierProvider.notifier).clearError();
+      } else if (success && context.mounted) {
+        // Navigation is handled by go_router redirect
+        // when auth state changes to unauthenticated
+        context.go(AppRoutes.login);
+      }
+    }
+  }
+}
+
+/// Logout button widget
+/// Shows loading state during logout process
+class _LogoutButton extends StatelessWidget {
+  final bool isLoading;
+  final VoidCallback onLogout;
+
+  const _LogoutButton({
+    required this.isLoading,
+    required this.onLogout,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: isLoading ? null : onLogout,
+      style: OutlinedButton.styleFrom(
+        side: const BorderSide(color: AppColors.errorLight),
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+      ),
+      icon: isLoading
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppColors.error,
+              ),
+            )
+          : const Icon(Icons.logout, color: AppColors.error),
+      label: Text(
+        isLoading ? 'Keluar...' : 'Keluar',
+        style: const TextStyle(color: AppColors.error),
       ),
     );
   }

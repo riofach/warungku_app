@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
@@ -29,7 +30,7 @@ class AppRoutes {
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: AppRoutes.login,
-    debugLogDiagnostics: true,
+    debugLogDiagnostics: kDebugMode, // Only log in debug mode
     redirect: (context, state) {
       final isLoggedIn = SupabaseService.isAuthenticated;
       final isLoggingIn = state.matchedLocation == AppRoutes.login;

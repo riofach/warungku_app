@@ -122,6 +122,7 @@ class DeleteConfirmationDialog extends StatelessWidget {
 }
 
 /// Logout confirmation dialog
+/// Displays: "Yakin ingin keluar?" with "Batal" and "Keluar" options
 class LogoutConfirmationDialog extends StatelessWidget {
   const LogoutConfirmationDialog({super.key});
 
@@ -129,13 +130,16 @@ class LogoutConfirmationDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     return const ConfirmationDialog(
       title: 'Keluar',
-      message: 'Yakin ingin keluar dari aplikasi?',
+      message: 'Yakin ingin keluar?',
       confirmLabel: 'Keluar',
+      cancelLabel: 'Batal',
       icon: Icons.logout,
       isDestructive: true,
     );
   }
 
+  /// Show logout confirmation dialog
+  /// Returns true if user confirms, false otherwise
   static Future<bool> show(BuildContext context) async {
     final result = await showDialog<bool>(
       context: context,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/services/supabase_service.dart';
@@ -34,6 +35,23 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
+      // Check network connectivity first
+      final connectivityResult = await Connectivity().checkConnectivity();
+      final hasConnection = connectivityResult.isNotEmpty && 
+          !connectivityResult.contains(ConnectivityResult.none);
+      
+      if (!hasConnection) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Tidak ada koneksi internet'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+        return;
+      }
+
       await SupabaseService.signIn(
         email: _emailController.text.trim(),
         password: _passwordController.text,
@@ -44,9 +62,20 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       if (mounted) {
+        // Determine error message based on exception type
+        String errorMessage = 'Email atau password salah';
+        final errorString = e.toString().toLowerCase();
+        
+        if (errorString.contains('network') ||
+            errorString.contains('socket') ||
+            errorString.contains('connection') ||
+            errorString.contains('timeout')) {
+          errorMessage = 'Tidak ada koneksi internet';
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Email atau password salah'),
+            content: Text(errorMessage),
             backgroundColor: AppColors.error,
           ),
         );

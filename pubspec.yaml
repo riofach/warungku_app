@@ -1,0 +1,46 @@
+name: warungku_app
+description: "WarungKu Digital - Aplikasi Kasir UMKM"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # Supabase
+  supabase_flutter: ^2.12.0
+  
+  # State Management (tanpa code generation untuk stabilitas)
+  flutter_riverpod: ^3.2.0
+  
+  # Navigation
+  go_router: ^17.0.1
+  
+  # UI & Styling
+  google_fonts: ^7.0.2
+  
+  # Utilities
+  intl: ^0.20.2
+  flutter_dotenv: ^6.0.0
+  
+  # Media
+  image_picker: ^1.2.1
+  
+  # PDF Generation
+  pdf: ^3.11.3
+  printing: ^5.14.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  
+  assets:
+    - .env
+    - assets/images/

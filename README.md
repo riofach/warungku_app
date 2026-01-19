@@ -43,28 +43,28 @@ lib/
 
 ## 🛠️ Tech Stack
 
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| Flutter | 3.x | UI Framework |
-| Dart | 3.x | Programming Language |
-| Supabase | Latest | Backend (Auth, Database, Storage) |
-| Riverpod | 3.x | State Management |
-| GoRouter | 17.x | Navigation |
-| Google Fonts | 7.x | Typography (Inter) |
+| Technology   | Version | Purpose                           |
+| ------------ | ------- | --------------------------------- |
+| Flutter      | 3.x     | UI Framework                      |
+| Dart         | 3.x     | Programming Language              |
+| Supabase     | Latest  | Backend (Auth, Database, Storage) |
+| Riverpod     | 3.x     | State Management                  |
+| GoRouter     | 17.x    | Navigation                        |
+| Google Fonts | 7.x     | Typography (Inter)                |
 
 ## 📦 Dependencies
 
 ```yaml
 dependencies:
-  supabase_flutter: ^2.12.0    # Supabase SDK
-  flutter_riverpod: ^3.2.0     # State management
-  go_router: ^17.0.1           # Navigation
-  google_fonts: ^7.0.2         # Inter font
-  intl: ^0.20.2                # Localization & formatting
-  flutter_dotenv: ^6.0.0       # Environment variables
-  image_picker: ^1.2.1         # Image upload
-  pdf: ^3.11.3                 # PDF generation
-  printing: ^5.14.2            # PDF printing/sharing
+  supabase_flutter: ^2.12.0 # Supabase SDK
+  flutter_riverpod: ^3.2.0 # State management
+  go_router: ^17.0.1 # Navigation
+  google_fonts: ^7.0.2 # Inter font
+  intl: ^0.20.2 # Localization & formatting
+  flutter_dotenv: ^6.0.0 # Environment variables
+  image_picker: ^1.2.1 # Image upload
+  pdf: ^3.11.3 # PDF generation
+  printing: ^5.14.2 # PDF printing/sharing
 ```
 
 ## 🚀 Getting Started
@@ -79,22 +79,26 @@ dependencies:
 ### Installation
 
 1. **Clone repository**
+
    ```bash
-   git clone https://github.com/your-username/warungku_app.git
+   git clone https://github.com/riofach/warungku_app.git
    cd warungku_app
    ```
 
 2. **Install dependencies**
+
    ```bash
    flutter pub get
    ```
 
 3. **Setup environment variables**
+
    ```bash
    cp .env.example .env
    ```
-   
+
    Edit `.env` dengan kredensial Supabase Anda:
+
    ```env
    SUPABASE_URL=https://your-project.supabase.co
    SUPABASE_ANON_KEY=your-anon-key
@@ -117,20 +121,20 @@ flutter build apk --release
 
 ## 📱 Screenshots
 
-| Login | Dashboard | POS |
-|-------|-----------|-----|
+| Login                                | Dashboard                                    | POS                              |
+| ------------------------------------ | -------------------------------------------- | -------------------------------- |
 | ![Login](docs/screenshots/login.png) | ![Dashboard](docs/screenshots/dashboard.png) | ![POS](docs/screenshots/pos.png) |
 
 ## 🎨 Design System
 
 ### Colors
 
-| Token | Hex | Usage |
-|-------|-----|-------|
-| Primary | `#2563EB` | Buttons, links, accents |
+| Token     | Hex       | Usage                      |
+| --------- | --------- | -------------------------- |
+| Primary   | `#2563EB` | Buttons, links, accents    |
 | Secondary | `#10B981` | Success, profit indicators |
-| Error | `#EF4444` | Error states, warnings |
-| Warning | `#F59E0B` | Low stock alerts |
+| Error     | `#EF4444` | Error states, warnings     |
+| Warning   | `#F59E0B` | Low stock alerts           |
 
 ### Typography
 
@@ -165,10 +169,10 @@ flutter test --coverage
 
 ## 🔐 Environment Variables
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `SUPABASE_URL` | Supabase project URL | ✅ |
-| `SUPABASE_ANON_KEY` | Supabase anonymous key | ✅ |
+| Variable            | Description            | Required |
+| ------------------- | ---------------------- | -------- |
+| `SUPABASE_URL`      | Supabase project URL   | ✅       |
+| `SUPABASE_ANON_KEY` | Supabase anonymous key | ✅       |
 
 ## 📄 Related Projects
 
@@ -187,9 +191,9 @@ flutter test --coverage
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 👨‍💻 Author
+## 👨💻 Author
 
-**Luthfan** - Skripsi Project
+**Fachrio Raditya** - Skripsi Project
 
 ---
 

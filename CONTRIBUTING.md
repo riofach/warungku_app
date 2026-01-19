@@ -9,7 +9,7 @@ Proyek ini mengikuti [Contributor Covenant Code of Conduct](https://www.contribu
 ## 🚀 Getting Started
 
 1. Fork repository ini
-2. Clone fork Anda: `git clone https://github.com/your-username/warungku_app.git`
+2. Clone fork Anda: `git clone https://github.com/riofach/warungku_app.git`
 3. Buat branch baru: `git checkout -b feature/your-feature-name`
 4. Lakukan perubahan
 5. Commit dengan pesan yang jelas: `git commit -m "feat: add new feature"`

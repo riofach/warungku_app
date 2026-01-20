@@ -52,12 +52,10 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => context.push(AppRoutes.categories),
           ),
           _MenuTile(
-            icon: Icons.location_on_outlined,
+            icon: Icons.location_city_outlined,
             title: 'Blok Perumahan',
-            subtitle: 'Kelola area delivery',
-            onTap: () {
-              // TODO: Navigate to housing blocks
-            },
+            subtitle: 'Kelola blok untuk delivery',
+            onTap: () => context.push(AppRoutes.housingBlocks),
           ),
 
           // Reports section

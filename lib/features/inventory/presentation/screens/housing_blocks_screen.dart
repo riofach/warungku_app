@@ -6,120 +6,120 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/error_widget.dart';
 import '../../../../core/widgets/loading_widget.dart';
-import '../../data/models/category_model.dart';
-import '../../data/providers/categories_provider.dart';
-import '../widgets/add_category_dialog.dart';
-import '../widgets/edit_category_dialog.dart';
-import '../widgets/delete_category_dialog.dart';
+import '../../data/models/housing_block_model.dart';
+import '../../data/providers/housing_blocks_provider.dart';
+import '../widgets/add_housing_block_dialog.dart';
+import '../widgets/edit_housing_block_dialog.dart';
+import '../widgets/delete_housing_block_dialog.dart';
 
-/// Categories management screen
-/// FR10: Admin dapat membuat dan mengelola kategori item
-class CategoriesScreen extends ConsumerStatefulWidget {
-  const CategoriesScreen({super.key});
+/// Housing Blocks management screen
+/// FR12: Admin dapat mengelola daftar blok perumahan untuk delivery
+class HousingBlocksScreen extends ConsumerStatefulWidget {
+  const HousingBlocksScreen({super.key});
 
   @override
-  ConsumerState<CategoriesScreen> createState() => _CategoriesScreenState();
+  ConsumerState<HousingBlocksScreen> createState() => _HousingBlocksScreenState();
 }
 
-class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
+class _HousingBlocksScreenState extends ConsumerState<HousingBlocksScreen> {
   @override
   void initState() {
     super.initState();
-    // Load categories on init
+    // Load housing blocks on init
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(categoryListNotifierProvider.notifier).loadCategories();
+      ref.read(housingBlockListNotifierProvider.notifier).loadBlocks();
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final categoryState = ref.watch(categoryListNotifierProvider);
+    final blockState = ref.watch(housingBlockListNotifierProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Kategori'),
+        title: const Text('Blok Perumahan'),
       ),
-      body: _buildBody(categoryState),
+      body: _buildBody(blockState),
       floatingActionButton: FloatingActionButton(
-        onPressed: _handleAddCategory,
-        tooltip: 'Tambah Kategori',
+        onPressed: _handleAddBlock,
+        tooltip: 'Tambah Blok',
         child: const Icon(Icons.add),
       ),
     );
   }
 
-  Widget _buildBody(CategoryListState state) {
+  Widget _buildBody(HousingBlockListState state) {
     if (state.isLoading) {
-      return const LoadingWidget(message: 'Memuat kategori...');
+      return const LoadingWidget(message: 'Memuat blok perumahan...');
     }
 
     if (state.hasError) {
       return AppErrorWidget(
-        message: 'Gagal memuat kategori',
+        message: 'Gagal memuat blok perumahan',
         details: state.errorMessage,
         onRetry: () {
-          ref.read(categoryListNotifierProvider.notifier).refresh();
+          ref.read(housingBlockListNotifierProvider.notifier).refresh();
         },
       );
     }
 
     if (state.isEmpty) {
       return EmptyStateWidget(
-        icon: Icons.category_outlined,
-        title: 'Belum ada kategori',
-        subtitle: 'Tap + untuk menambah kategori baru',
-        actionLabel: 'Tambah Kategori',
-        onAction: _handleAddCategory,
+        icon: Icons.location_city_outlined,
+        title: 'Belum ada blok perumahan',
+        subtitle: 'Tap + untuk menambah.',
+        actionLabel: 'Tambah Blok',
+        onAction: _handleAddBlock,
       );
     }
 
     return RefreshIndicator(
-      onRefresh: () => ref.read(categoryListNotifierProvider.notifier).refresh(),
+      onRefresh: () => ref.read(housingBlockListNotifierProvider.notifier).refresh(),
       child: ListView.builder(
         padding: const EdgeInsets.all(AppSpacing.screenPadding),
-        itemCount: state.categories.length,
+        itemCount: state.blocks.length,
         itemBuilder: (context, index) {
-          final category = state.categories[index];
-          return _CategoryCard(
-            category: category,
-            onTap: () => _handleEditCategory(category),
-            onDelete: () => _handleDeleteCategory(category),
+          final block = state.blocks[index];
+          return _HousingBlockCard(
+            block: block,
+            onTap: () => _handleEditBlock(block),
+            onDelete: () => _handleDeleteBlock(block),
           );
         },
       ),
     );
   }
 
-  Future<void> _handleAddCategory() async {
-    final success = await AddCategoryDialog.show(context);
+  Future<void> _handleAddBlock() async {
+    final success = await AddHousingBlockDialog.show(context);
     if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Kategori berhasil ditambahkan'),
+          content: Text('Blok berhasil ditambahkan'),
           backgroundColor: AppColors.success,
         ),
       );
     }
   }
 
-  Future<void> _handleEditCategory(Category category) async {
-    final success = await EditCategoryDialog.show(context, category);
+  Future<void> _handleEditBlock(HousingBlock block) async {
+    final success = await EditHousingBlockDialog.show(context, block);
     if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Kategori berhasil diperbarui'),
+          content: Text('Blok berhasil diperbarui'),
           backgroundColor: AppColors.success,
         ),
       );
     }
   }
 
-  Future<void> _handleDeleteCategory(Category category) async {
-    final success = await DeleteCategoryDialog.show(context, category);
+  Future<void> _handleDeleteBlock(HousingBlock block) async {
+    final success = await DeleteHousingBlockDialog.show(context, block);
     if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Kategori berhasil dihapus'),
+          content: Text('Blok berhasil dihapus'),
           backgroundColor: AppColors.success,
         ),
       );
@@ -127,14 +127,14 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
   }
 }
 
-/// Category card widget
-class _CategoryCard extends StatelessWidget {
-  final Category category;
+/// Housing Block card widget
+class _HousingBlockCard extends StatelessWidget {
+  final HousingBlock block;
   final VoidCallback onTap;
   final VoidCallback onDelete;
 
-  const _CategoryCard({
-    required this.category,
+  const _HousingBlockCard({
+    required this.block,
     required this.onTap,
     required this.onDelete,
   });
@@ -151,19 +151,13 @@ class _CategoryCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
           ),
           child: const Icon(
-            Icons.category,
+            Icons.location_city,
             color: AppColors.primary,
           ),
         ),
         title: Text(
-          category.name,
+          block.name,
           style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Text(
-          '${category.itemCount} barang',
-          style: TextStyle(
-            color: AppColors.textSecondary.withValues(alpha: 0.8),
-          ),
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
@@ -183,6 +177,7 @@ class _CategoryCard extends StatelessWidget {
           ],
         ),
         onTap: onTap,
+        onLongPress: onDelete, // AC6: Long-press to delete
       ),
     );
   }

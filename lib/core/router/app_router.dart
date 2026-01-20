@@ -8,6 +8,7 @@ import '../../features/orders/presentation/screens/orders_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/inventory/presentation/screens/items_screen.dart';
 import '../../features/inventory/presentation/screens/categories_screen.dart';
+import '../../features/inventory/presentation/screens/housing_blocks_screen.dart';
 import '../../features/reports/presentation/screens/reports_screen.dart';
 import '../../features/admin_management/presentation/screens/admin_list_screen.dart';
 import '../../features/transactions/presentation/screens/transaction_history_screen.dart';
@@ -25,6 +26,7 @@ class AppRoutes {
   static const String settings = '/settings';
   static const String items = '/items';
   static const String categories = '/categories';
+  static const String housingBlocks = '/housing-blocks';
   static const String reports = '/reports';
   static const String adminManagement = '/admin-management';
   static const String transactionHistory = '/transaction-history';
@@ -89,6 +91,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.categories,
         builder: (context, state) => const CategoriesScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.housingBlocks,
+        builder: (context, state) => const HousingBlocksScreen(),
       ),
       GoRoute(
         path: AppRoutes.reports,

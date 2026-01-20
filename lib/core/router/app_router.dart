@@ -10,6 +10,7 @@ import '../../features/inventory/presentation/screens/items_screen.dart';
 import '../../features/inventory/presentation/screens/categories_screen.dart';
 import '../../features/reports/presentation/screens/reports_screen.dart';
 import '../../features/admin_management/presentation/screens/admin_list_screen.dart';
+import '../../features/transactions/presentation/screens/transaction_history_screen.dart';
 import '../services/supabase_service.dart';
 import '../widgets/main_scaffold.dart';
 
@@ -26,6 +27,7 @@ class AppRoutes {
   static const String categories = '/categories';
   static const String reports = '/reports';
   static const String adminManagement = '/admin-management';
+  static const String transactionHistory = '/transaction-history';
 }
 
 /// Router provider
@@ -95,6 +97,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.adminManagement,
         builder: (context, state) => const AdminListScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.transactionHistory,
+        builder: (context, state) => const TransactionHistoryScreen(),
       ),
     ],
   );

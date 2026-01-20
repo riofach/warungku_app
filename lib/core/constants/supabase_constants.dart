@@ -120,4 +120,24 @@ class SupabaseConstants {
       item:items(id, name, image_url, sell_price)
     )
   ''';
+
+  /// Select transactions with admin info (for FR5 - Track Transactions by Admin)
+  static const String selectTransactionsWithAdmin = '''
+    *,
+    admin:users!transactions_admin_id_fkey(id, name, email),
+    transaction_items(*)
+  ''';
+
+  // ===========================================
+  // TABLE NAMES - Users
+  // ===========================================
+  
+  static const String tableUsers = 'users';
+
+  // ===========================================
+  // COLUMN NAMES - Users
+  // ===========================================
+  
+  static const String colEmail = 'email';
+  static const String colRole = 'role';
 }

@@ -68,6 +68,12 @@ class SettingsScreen extends ConsumerWidget {
             subtitle: 'Lihat laporan & export PDF',
             onTap: () => context.push(AppRoutes.reports),
           ),
+          _MenuTile(
+            icon: Icons.receipt_long_outlined,
+            title: 'Riwayat Transaksi',
+            subtitle: 'Lihat semua transaksi kasir',
+            onTap: () => context.push(AppRoutes.transactionHistory),
+          ),
 
           // Settings section
           const _SectionHeader(title: 'Pengaturan'),

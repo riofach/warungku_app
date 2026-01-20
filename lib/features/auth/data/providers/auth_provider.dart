@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import '../models/admin_user.dart';
@@ -8,24 +9,50 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository();
 });
 
-/// Provider for current user
-/// Returns AdminUser if logged in, null otherwise
-final currentUserProvider = Provider<AdminUser?>((ref) {
+/// Stream provider for Supabase auth state changes
+/// This is the SOURCE OF TRUTH for auth state
+final supabaseAuthStateProvider = StreamProvider<supabase.AuthState>((ref) {
   final authRepo = ref.watch(authRepositoryProvider);
-  return authRepo.getCurrentUser();
+  return authRepo.authStateChanges;
+});
+
+/// Provider for current user - REACTIVE to Supabase auth stream
+/// Returns AdminUser if logged in, null otherwise
+/// Uses Supabase stream for reliable updates after login/logout
+final currentUserProvider = Provider<AdminUser?>((ref) {
+  // Watch Supabase auth stream for reliable updates
+  final supabaseAuthState = ref.watch(supabaseAuthStateProvider);
+  
+  return supabaseAuthState.when(
+    data: (authState) {
+      // Get user from session (most reliable)
+      final user = authState.session?.user;
+      if (user == null) {
+        debugPrint('currentUserProvider: No user in session');
+        return null;
+      }
+      final adminUser = AdminUser.fromSupabaseUser(user);
+      debugPrint('currentUserProvider: User loaded - ${adminUser.email}, role: ${adminUser.role}');
+      return adminUser;
+    },
+    loading: () {
+      // During initial load, try to get from current session
+      debugPrint('currentUserProvider: Loading, checking current session...');
+      final authRepo = ref.read(authRepositoryProvider);
+      return authRepo.getCurrentUser();
+    },
+    error: (error, stack) {
+      debugPrint('currentUserProvider: Error - $error');
+      return null;
+    },
+  );
 });
 
 /// Provider for auth state
 /// Returns true if user is authenticated
 final isAuthenticatedProvider = Provider<bool>((ref) {
-  final authRepo = ref.watch(authRepositoryProvider);
-  return authRepo.isAuthenticated;
-});
-
-/// Stream provider for Supabase auth state changes
-final supabaseAuthStateProvider = StreamProvider<supabase.AuthState>((ref) {
-  final authRepo = ref.watch(authRepositoryProvider);
-  return authRepo.authStateChanges;
+  final currentUser = ref.watch(currentUserProvider);
+  return currentUser != null;
 });
 
 /// Auth status enum for UI
@@ -62,6 +89,8 @@ class AppAuthState {
 }
 
 /// Auth notifier using Notifier (Riverpod 2.0+ style)
+/// Manages login/logout actions and loading/error states
+/// Note: currentUserProvider uses Supabase stream directly for user data
 class AuthNotifier extends Notifier<AppAuthState> {
   @override
   AppAuthState build() {
@@ -85,6 +114,9 @@ class AuthNotifier extends Notifier<AppAuthState> {
     );
 
     if (result.success) {
+      // Supabase stream will automatically update currentUserProvider
+      // with the new user data from the session
+      debugPrint('AuthNotifier: signIn success for $email');
       state = AppAuthState.authenticated();
       return true;
     } else {
@@ -101,6 +133,8 @@ class AuthNotifier extends Notifier<AppAuthState> {
     final result = await authRepo.signOut();
     
     if (result.success) {
+      // Supabase stream will automatically clear user data
+      debugPrint('AuthNotifier: signOut success');
       state = AppAuthState.unauthenticated();
       return true;
     } else {

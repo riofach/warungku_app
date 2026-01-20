@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/utils/formatters.dart';
+import '../../../auth/data/providers/auth_provider.dart';
 import '../../data/models/admin_account.dart';
 import '../../data/providers/admin_management_provider.dart';
 import '../widgets/add_admin_dialog.dart';
+import '../widgets/delete_admin_dialog.dart';
+import '../widgets/edit_password_dialog.dart';
 
 /// Admin List Screen
 /// FR2: Owner dapat membuat akun admin tambahan
-/// Shows list of admin accounts and allows creating new ones
+/// FR2a: Owner dapat mengubah password admin
+/// FR2b: Owner dapat menghapus akun admin
+/// Shows list of admin accounts with edit/delete actions
 class AdminListScreen extends ConsumerStatefulWidget {
   const AdminListScreen({super.key});
 
@@ -31,12 +36,13 @@ class _AdminListScreenState extends ConsumerState<AdminListScreen> {
   @override
   Widget build(BuildContext context) {
     final adminListState = ref.watch(adminListNotifierProvider);
+    final currentUser = ref.watch(currentUserProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Kelola Admin'),
       ),
-      body: _buildBody(adminListState),
+      body: _buildBody(adminListState, currentUser?.id),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _handleAddAdmin(context),
         icon: const Icon(Icons.person_add),
@@ -45,7 +51,7 @@ class _AdminListScreenState extends ConsumerState<AdminListScreen> {
     );
   }
 
-  Widget _buildBody(AdminListState state) {
+  Widget _buildBody(AdminListState state, String? currentUserId) {
     if (state.isLoading) {
       return const Center(
         child: CircularProgressIndicator(),
@@ -115,7 +121,14 @@ class _AdminListScreenState extends ConsumerState<AdminListScreen> {
         itemCount: state.admins.length,
         itemBuilder: (context, index) {
           final admin = state.admins[index];
-          return _AdminCard(admin: admin);
+          // AC7: Self-protection - hide actions for owner's own account
+          final isSelf = currentUserId == admin.id;
+          return _AdminCard(
+            admin: admin,
+            showActions: !isSelf && !admin.isOwner,
+            onEditPassword: () => _handleEditPassword(context, admin),
+            onDelete: () => _handleDeleteAdmin(context, admin),
+          );
         },
       ),
     );
@@ -132,78 +145,150 @@ class _AdminListScreenState extends ConsumerState<AdminListScreen> {
       );
     }
   }
+
+  Future<void> _handleEditPassword(BuildContext context, AdminAccount admin) async {
+    final success = await EditPasswordDialog.show(context, admin);
+    if (success && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Password ${admin.displayName} berhasil diubah'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleDeleteAdmin(BuildContext context, AdminAccount admin) async {
+    final success = await DeleteAdminDialog.show(context, admin);
+    if (success && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Admin ${admin.displayName} berhasil dihapus'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    }
+  }
 }
 
-/// Admin card widget
+/// Admin card widget with actions
 class _AdminCard extends StatelessWidget {
   final AdminAccount admin;
+  final bool showActions;
+  final VoidCallback? onEditPassword;
+  final VoidCallback? onDelete;
 
-  const _AdminCard({required this.admin});
+  const _AdminCard({
+    required this.admin,
+    required this.showActions,
+    this.onEditPassword,
+    this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final dateFormat = DateFormat('dd MMM yyyy', 'id_ID');
-
     return Card(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: admin.isOwner ? AppColors.primary : AppColors.secondary,
-          child: Text(
-            admin.initials,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
         ),
-        title: Row(
+        child: Row(
           children: [
-            Expanded(
+            // Avatar
+            CircleAvatar(
+              backgroundColor: admin.isOwner ? AppColors.primary : AppColors.secondary,
               child: Text(
-                admin.displayName,
-                overflow: TextOverflow.ellipsis,
+                admin.initials,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
-            if (admin.isOwner)
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.sm,
-                  vertical: 2,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Text(
-                  'Owner',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primary,
+            const SizedBox(width: AppSpacing.md),
+            
+            // Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          admin.displayName,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ),
+                      if (admin.isOwner) ...[
+                        const SizedBox(width: AppSpacing.sm),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.sm,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Text(
+                            'Owner',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
-                ),
+                  const SizedBox(height: 2),
+                  Text(
+                    admin.email,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary.withValues(alpha: 0.9),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    // LOW-3 FIX: Use centralized formatter instead of local DateFormat
+                    'Bergabung ${Formatters.formatDateCompact(admin.createdAt)}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ],
               ),
+            ),
+            
+            // Actions (only shown for non-self, non-owner admins)
+            if (showActions) ...[
+              // Edit password button
+              IconButton(
+                onPressed: onEditPassword,
+                icon: const Icon(Icons.lock_reset),
+                tooltip: 'Ubah Password',
+                color: AppColors.textSecondary,
+              ),
+              // Delete button
+              IconButton(
+                onPressed: onDelete,
+                icon: const Icon(Icons.delete_outline),
+                tooltip: 'Hapus Admin',
+                color: AppColors.error,
+              ),
+            ],
           ],
         ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              admin.email,
-              style: const TextStyle(fontSize: 13),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              'Bergabung ${dateFormat.format(admin.createdAt)}',
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondary.withValues(alpha: 0.7),
-              ),
-            ),
-          ],
-        ),
-        isThreeLine: true,
       ),
     );
   }

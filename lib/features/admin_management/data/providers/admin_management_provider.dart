@@ -91,6 +91,48 @@ class CreateAdminState {
   bool get isSuccess => status == CreateAdminStatus.success;
 }
 
+/// Generic action state for update password and delete admin
+enum AdminActionStatus {
+  initial,
+  loading,
+  success,
+  error,
+}
+
+class AdminActionState {
+  final AdminActionStatus status;
+  final String? successMessage;
+  final String? errorMessage;
+
+  const AdminActionState({
+    required this.status,
+    this.successMessage,
+    this.errorMessage,
+  });
+
+  factory AdminActionState.initial() => const AdminActionState(
+        status: AdminActionStatus.initial,
+      );
+
+  factory AdminActionState.loading() => const AdminActionState(
+        status: AdminActionStatus.loading,
+      );
+
+  factory AdminActionState.success(String message) => AdminActionState(
+        status: AdminActionStatus.success,
+        successMessage: message,
+      );
+
+  factory AdminActionState.error(String message) => AdminActionState(
+        status: AdminActionStatus.error,
+        errorMessage: message,
+      );
+
+  bool get isLoading => status == AdminActionStatus.loading;
+  bool get hasError => status == AdminActionStatus.error;
+  bool get isSuccess => status == AdminActionStatus.success;
+}
+
 /// Notifier for admin list
 class AdminListNotifier extends Notifier<AdminListState> {
   @override
@@ -156,6 +198,74 @@ class CreateAdminNotifier extends Notifier<CreateAdminState> {
   }
 }
 
+/// Notifier for update password action
+class UpdatePasswordNotifier extends Notifier<AdminActionState> {
+  @override
+  AdminActionState build() {
+    return AdminActionState.initial();
+  }
+
+  /// Update admin password
+  Future<bool> updatePassword({
+    required String userId,
+    required String newPassword,
+  }) async {
+    state = AdminActionState.loading();
+
+    final repository = ref.read(adminManagementRepositoryProvider);
+    final result = await repository.updateAdminPassword(
+      userId: userId,
+      newPassword: newPassword,
+    );
+
+    if (result.success) {
+      state = AdminActionState.success(result.successMessage ?? 'Password berhasil diubah');
+      return true;
+    } else {
+      state = AdminActionState.error(result.errorMessage ?? 'Gagal mengubah password');
+      return false;
+    }
+  }
+
+  /// Reset state
+  void reset() {
+    state = AdminActionState.initial();
+  }
+}
+
+/// Notifier for delete admin action
+class DeleteAdminNotifier extends Notifier<AdminActionState> {
+  @override
+  AdminActionState build() {
+    return AdminActionState.initial();
+  }
+
+  /// Delete admin
+  Future<bool> deleteAdmin({
+    required String userId,
+  }) async {
+    state = AdminActionState.loading();
+
+    final repository = ref.read(adminManagementRepositoryProvider);
+    final result = await repository.deleteAdmin(userId: userId);
+
+    if (result.success) {
+      state = AdminActionState.success(result.successMessage ?? 'Admin berhasil dihapus');
+      // Refresh admin list
+      ref.read(adminListNotifierProvider.notifier).refresh();
+      return true;
+    } else {
+      state = AdminActionState.error(result.errorMessage ?? 'Gagal menghapus admin');
+      return false;
+    }
+  }
+
+  /// Reset state
+  void reset() {
+    state = AdminActionState.initial();
+  }
+}
+
 /// Providers
 final adminListNotifierProvider = NotifierProvider<AdminListNotifier, AdminListState>(() {
   return AdminListNotifier();
@@ -163,4 +273,12 @@ final adminListNotifierProvider = NotifierProvider<AdminListNotifier, AdminListS
 
 final createAdminNotifierProvider = NotifierProvider<CreateAdminNotifier, CreateAdminState>(() {
   return CreateAdminNotifier();
+});
+
+final updatePasswordNotifierProvider = NotifierProvider<UpdatePasswordNotifier, AdminActionState>(() {
+  return UpdatePasswordNotifier();
+});
+
+final deleteAdminNotifierProvider = NotifierProvider<DeleteAdminNotifier, AdminActionState>(() {
+  return DeleteAdminNotifier();
 });

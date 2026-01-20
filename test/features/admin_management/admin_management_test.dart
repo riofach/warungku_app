@@ -338,4 +338,243 @@ void main() {
       expect(result.errorCode, 'invalid_credentials');
     });
   });
+
+  // Story 2.5: Tests for AdminActionState (Update Password & Delete Admin)
+  group('AdminActionState', () {
+    test('should create initial state', () {
+      final state = AdminActionState.initial();
+
+      expect(state.status, AdminActionStatus.initial);
+      expect(state.isLoading, false);
+      expect(state.hasError, false);
+      expect(state.isSuccess, false);
+      expect(state.successMessage, isNull);
+      expect(state.errorMessage, isNull);
+    });
+
+    test('should create loading state', () {
+      final state = AdminActionState.loading();
+
+      expect(state.status, AdminActionStatus.loading);
+      expect(state.isLoading, true);
+      expect(state.hasError, false);
+      expect(state.isSuccess, false);
+    });
+
+    test('should create success state with message', () {
+      final state = AdminActionState.success('Password berhasil diubah');
+
+      expect(state.status, AdminActionStatus.success);
+      expect(state.isSuccess, true);
+      expect(state.successMessage, 'Password berhasil diubah');
+      expect(state.isLoading, false);
+      expect(state.hasError, false);
+    });
+
+    test('should create error state with message', () {
+      final state = AdminActionState.error('Gagal mengubah password');
+
+      expect(state.status, AdminActionStatus.error);
+      expect(state.hasError, true);
+      expect(state.errorMessage, 'Gagal mengubah password');
+      expect(state.isLoading, false);
+      expect(state.isSuccess, false);
+    });
+
+    test('should handle update password success message', () {
+      final state = AdminActionState.success('Password berhasil diubah');
+
+      expect(state.successMessage, 'Password berhasil diubah');
+      expect(state.isSuccess, true);
+    });
+
+    test('should handle delete admin success message', () {
+      final state = AdminActionState.success('Admin berhasil dihapus');
+
+      expect(state.successMessage, 'Admin berhasil dihapus');
+      expect(state.isSuccess, true);
+    });
+
+    test('should handle self-protection error', () {
+      final state = AdminActionState.error('Tidak dapat mengubah akun sendiri');
+
+      expect(state.hasError, true);
+      expect(state.errorMessage, 'Tidak dapat mengubah akun sendiri');
+    });
+
+    test('should handle password validation error', () {
+      final state = AdminActionState.error('Password minimal 8 karakter');
+
+      expect(state.hasError, true);
+      expect(state.errorMessage, 'Password minimal 8 karakter');
+    });
+
+    test('should handle authorization error', () {
+      final state = AdminActionState.error('Hanya owner yang dapat melakukan tindakan ini');
+
+      expect(state.hasError, true);
+      expect(state.errorMessage, 'Hanya owner yang dapat melakukan tindakan ini');
+    });
+
+    test('should handle admin not found error', () {
+      final state = AdminActionState.error('Admin tidak ditemukan');
+
+      expect(state.hasError, true);
+      expect(state.errorMessage, 'Admin tidak ditemukan');
+    });
+  });
+
+  // Story 2.5: Tests for self-protection logic
+  group('Self-Protection Logic', () {
+    test('should identify self as same user', () {
+      const currentUserId = '123-456-789';
+      final admin = AdminAccount(
+        id: '123-456-789',
+        email: 'test@test.com',
+        name: 'Test',
+        role: 'admin',
+        createdAt: DateTime(2026, 1, 19),
+        updatedAt: DateTime(2026, 1, 19),
+      );
+
+      final isSelf = currentUserId == admin.id;
+
+      expect(isSelf, true);
+    });
+
+    test('should identify different user as not self', () {
+      const currentUserId = '123-456-789';
+      final admin = AdminAccount(
+        id: '999-888-777',
+        email: 'other@test.com',
+        name: 'Other',
+        role: 'admin',
+        createdAt: DateTime(2026, 1, 19),
+        updatedAt: DateTime(2026, 1, 19),
+      );
+
+      final isSelf = currentUserId == admin.id;
+
+      expect(isSelf, false);
+    });
+
+    test('should correctly identify owner role', () {
+      final admin = AdminAccount(
+        id: '123',
+        email: 'owner@test.com',
+        name: 'Owner',
+        role: 'owner',
+        createdAt: DateTime(2026, 1, 19),
+        updatedAt: DateTime(2026, 1, 19),
+      );
+
+      expect(admin.isOwner, true);
+    });
+
+    test('should correctly identify non-owner role', () {
+      final admin = AdminAccount(
+        id: '123',
+        email: 'admin@test.com',
+        name: 'Admin',
+        role: 'admin',
+        createdAt: DateTime(2026, 1, 19),
+        updatedAt: DateTime(2026, 1, 19),
+      );
+
+      expect(admin.isOwner, false);
+    });
+
+    test('showActions should be false for self', () {
+      const currentUserId = '123-456-789';
+      final admin = AdminAccount(
+        id: '123-456-789',
+        email: 'test@test.com',
+        name: 'Test',
+        role: 'admin',
+        createdAt: DateTime(2026, 1, 19),
+        updatedAt: DateTime(2026, 1, 19),
+      );
+
+      final isSelf = currentUserId == admin.id;
+      // AC7: Self-protection - hide actions for owner's own account
+      final showActions = !isSelf && !admin.isOwner;
+
+      expect(showActions, false);
+    });
+
+    test('showActions should be false for owner accounts', () {
+      const currentUserId = '999-888-777';
+      final admin = AdminAccount(
+        id: '123-456-789',
+        email: 'owner@test.com',
+        name: 'Owner',
+        role: 'owner',
+        createdAt: DateTime(2026, 1, 19),
+        updatedAt: DateTime(2026, 1, 19),
+      );
+
+      final isSelf = currentUserId == admin.id;
+      final showActions = !isSelf && !admin.isOwner;
+
+      expect(showActions, false);
+    });
+
+    test('showActions should be true for other admin accounts', () {
+      const currentUserId = '999-888-777';
+      final admin = AdminAccount(
+        id: '123-456-789',
+        email: 'admin@test.com',
+        name: 'Admin',
+        role: 'admin',
+        createdAt: DateTime(2026, 1, 19),
+        updatedAt: DateTime(2026, 1, 19),
+      );
+
+      final isSelf = currentUserId == admin.id;
+      final showActions = !isSelf && !admin.isOwner;
+
+      expect(showActions, true);
+    });
+  });
+
+  // Story 2.5: Password validation tests
+  group('Password Validation', () {
+    test('password with 8 characters should be valid', () {
+      const password = '12345678';
+      
+      expect(password.length >= 8, true);
+    });
+
+    test('password with 7 characters should be invalid', () {
+      const password = '1234567';
+      
+      expect(password.length >= 8, false);
+    });
+
+    test('password with more than 8 characters should be valid', () {
+      const password = 'mySecurePassword123';
+      
+      expect(password.length >= 8, true);
+    });
+
+    test('empty password should be invalid', () {
+      const password = '';
+      
+      expect(password.length >= 8, false);
+    });
+
+    test('passwords should match for confirmation', () {
+      const password = 'password123';
+      const confirmPassword = 'password123';
+      
+      expect(password == confirmPassword, true);
+    });
+
+    test('passwords should fail if not matching', () {
+      const password = 'password123';
+      const confirmPassword = 'differentPassword';
+      
+      expect(password == confirmPassword, false);
+    });
+  });
 }

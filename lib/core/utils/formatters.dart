@@ -32,6 +32,12 @@ class Formatters {
     return DateFormat('dd/MM/yyyy').format(date);
   }
 
+  /// Format DateTime to compact date with short month: "15 Jan 2026"
+  /// Used for admin list cards, compact displays
+  static String formatDateCompact(DateTime date) {
+    return DateFormat('dd MMM yyyy', 'id_ID').format(date);
+  }
+
   /// Format DateTime to time only: "10:30"
   static String formatTime(DateTime date) {
     return DateFormat('HH:mm').format(date);

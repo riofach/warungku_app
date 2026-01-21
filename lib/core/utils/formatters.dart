@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 /// Formatting utilities for currency, date, and other values
@@ -85,5 +86,44 @@ class Formatters {
     final dateStr = DateFormat('yyyyMMdd').format(today);
     final seqStr = sequence.toString().padLeft(4, '0');
     return 'TRX-$dateStr-$seqStr';
+  }
+}
+
+/// Rupiah input formatter for price fields
+/// Converts input to formatted Rupiah: 3500 -> 3.500
+/// Use with TextFormField inputFormatters
+class RupiahInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    // Remove non-digits
+    final digitsOnly = newValue.text.replaceAll(RegExp(r'[^\d]'), '');
+
+    if (digitsOnly.isEmpty) {
+      return newValue.copyWith(text: '');
+    }
+
+    // Parse and format with thousand separators
+    final number = int.parse(digitsOnly);
+    final formatted = _formatWithSeparator(number);
+
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+
+  String _formatWithSeparator(int number) {
+    final chars = number.toString().split('').reversed.toList();
+    final result = <String>[];
+    for (var i = 0; i < chars.length; i++) {
+      if (i > 0 && i % 3 == 0) {
+        result.add('.');
+      }
+      result.add(chars[i]);
+    }
+    return result.reversed.join();
   }
 }

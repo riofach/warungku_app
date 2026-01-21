@@ -1,1 +1,7 @@
 include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  errors:
+    # Suppress deprecated_member_use for DropdownButtonFormField 'value' parameter
+    # which is intentionally used for controlled dropdown behavior
+    deprecated_member_use: ignore

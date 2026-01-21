@@ -10,6 +10,7 @@ import '../../features/inventory/presentation/screens/items_screen.dart';
 import '../../features/inventory/presentation/screens/item_form_screen.dart';
 import '../../features/inventory/presentation/screens/categories_screen.dart';
 import '../../features/inventory/presentation/screens/housing_blocks_screen.dart';
+import '../../features/inventory/data/models/item_model.dart';
 import '../../features/reports/presentation/screens/reports_screen.dart';
 import '../../features/admin_management/presentation/screens/admin_list_screen.dart';
 import '../../features/transactions/presentation/screens/transaction_history_screen.dart';
@@ -27,6 +28,7 @@ class AppRoutes {
   static const String settings = '/settings';
   static const String items = '/items';
   static const String itemAdd = '/items/add';
+  static const String itemEdit = '/items/edit'; // Story 3.5: Edit route base
   static const String categories = '/categories';
   static const String housingBlocks = '/housing-blocks';
   static const String reports = '/reports';
@@ -93,6 +95,26 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.itemAdd,
         builder: (context, state) => const ItemFormScreen(),
+      ),
+      // Story 3.5: Edit item route (AC1, AC5)
+      // Path: /items/edit/:id
+      // Item data passed via extra parameter
+      // H4 fix: Handle null extra gracefully - redirect to items list if no data
+      GoRoute(
+        path: '${AppRoutes.itemEdit}/:id',
+        redirect: (context, state) {
+          // If extra is null (e.g., deep link), redirect to items list
+          // In production, could fetch item by ID instead
+          if (state.extra == null) {
+            return AppRoutes.items;
+          }
+          return null;
+        },
+        builder: (context, state) {
+          // Get item from extra parameter (guaranteed non-null by redirect)
+          final item = state.extra as Item?;
+          return ItemFormScreen(item: item);
+        },
       ),
       GoRoute(
         path: AppRoutes.categories,

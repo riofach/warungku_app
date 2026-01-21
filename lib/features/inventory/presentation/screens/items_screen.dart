@@ -8,6 +8,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/error_widget.dart' as app;
+import '../../data/models/item_model.dart';
 import '../../data/providers/items_provider.dart';
 import '../widgets/category_filter_chips.dart';
 import '../widgets/item_card.dart';
@@ -66,14 +67,10 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
     context.push(AppRoutes.itemAdd);
   }
 
-  void _navigateToItemDetail(String itemId) {
-    // TODO: Navigate to Item Edit screen (Story 3.5)
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Edit Barang ID: $itemId akan diimplementasikan di Story 3.5'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+  /// Navigate to edit item screen (Story 3.5 - AC1)
+  /// Uses context.push with item data via extra parameter
+  void _navigateToEditItem(Item item) {
+    context.push('${AppRoutes.itemEdit}/${item.id}', extra: item);
   }
 
   @override
@@ -188,7 +185,8 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
           final item = state.items[index];
           return ItemCard(
             item: item,
-            onTap: () => _navigateToItemDetail(item.id),
+            // Story 3.5 - AC1: Navigate to edit screen on tap
+            onTap: () => _navigateToEditItem(item),
           );
         },
       ),

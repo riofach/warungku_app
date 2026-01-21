@@ -9,9 +9,13 @@ import '../../../../core/theme/app_spacing.dart';
 /// Photo picker section for item form
 /// Displays photo preview and provides camera/gallery selection
 /// Implements AC: 3 (Photo Upload via Camera or Gallery)
+/// Story 3.5: Added existingImageUrl for edit mode support (AC3, AC7)
 class PhotoPickerSection extends StatelessWidget {
-  /// Currently selected image file
+  /// Currently selected image file (new image from camera/gallery)
   final File? selectedImage;
+
+  /// Existing image URL for edit mode (AC2: pre-load existing image)
+  final String? existingImageUrl;
 
   /// Callback when image is selected
   final void Function(File? file) onImageSelected;
@@ -25,11 +29,17 @@ class PhotoPickerSection extends StatelessWidget {
   const PhotoPickerSection({
     super.key,
     required this.selectedImage,
+    this.existingImageUrl,
     required this.onImageSelected,
     required this.onImageRemoved,
   });
 
-  /// Show bottom sheet with photo source options
+  /// Check if there's any image to display (new or existing)
+  bool get _hasAnyImage =>
+      (selectedImage != null && selectedImage!.existsSync()) ||
+      (existingImageUrl != null && existingImageUrl!.isNotEmpty);
+
+  /// Show bottom sheet with photo source options (AC3)
   void _showPhotoOptions(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -77,8 +87,8 @@ class PhotoPickerSection extends StatelessWidget {
                 },
               ),
 
-              // Remove photo option (only if photo exists)
-              if (selectedImage != null)
+              // Remove photo option (AC7: visible if photo exists)
+              if (_hasAnyImage)
                 ListTile(
                   leading: const Icon(Icons.delete, color: AppColors.error),
                   title: const Text(
@@ -212,8 +222,6 @@ class PhotoPickerSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasImage = selectedImage != null && selectedImage!.existsSync();
-    
     return GestureDetector(
       onTap: () => _showPhotoOptions(context),
       child: Container(
@@ -228,15 +236,30 @@ class PhotoPickerSection extends StatelessWidget {
             style: BorderStyle.solid,
           ),
         ),
-        child: hasImage
-            ? _buildImagePreview()
-            : _buildPlaceholder(),
+        child: _buildPreview(),
       ),
     );
   }
 
-  /// Build image preview when photo is selected
-  Widget _buildImagePreview() {
+  /// Build preview based on priority: selectedImage > existingImageUrl > placeholder
+  /// AC2: Display network image if existingImageUrl provided
+  Widget _buildPreview() {
+    // Priority 1: New selected image from camera/gallery
+    if (selectedImage != null && selectedImage!.existsSync()) {
+      return _buildFileImagePreview();
+    }
+    
+    // Priority 2: Existing image URL (for edit mode)
+    if (existingImageUrl != null && existingImageUrl!.isNotEmpty) {
+      return _buildNetworkImagePreview();
+    }
+    
+    // Priority 3: Placeholder
+    return _buildPlaceholder();
+  }
+
+  /// Build image preview for newly selected file
+  Widget _buildFileImagePreview() {
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppSpacing.radiusLg - 2),
       child: Stack(
@@ -248,42 +271,12 @@ class PhotoPickerSection extends StatelessWidget {
             cacheWidth: 800, // Limit decoded image size for memory efficiency
             cacheHeight: 800,
             errorBuilder: (context, error, stackTrace) {
-              // Show error state if image fails to load
-              return Container(
-                color: AppColors.surface,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.broken_image,
-                      size: 48,
-                      color: AppColors.error.withValues(alpha: 0.7),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      'Gagal memuat preview',
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      'Foto tetap tersimpan',
-                      style: TextStyle(
-                        color: AppColors.textSecondary.withValues(alpha: 0.7),
-                        fontSize: 10,
-                      ),
-                    ),
-                  ],
-                ),
-              );
+              return _buildErrorState();
             },
             frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
               if (wasSynchronouslyLoaded) {
                 return child;
               }
-              // Show loading indicator while image is being decoded
               return AnimatedSwitcher(
                 duration: const Duration(milliseconds: 200),
                 child: frame != null
@@ -297,47 +290,113 @@ class PhotoPickerSection extends StatelessWidget {
               );
             },
           ),
-          // Overlay with edit hint
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                vertical: AppSpacing.sm,
-                horizontal: AppSpacing.md,
-              ),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                  colors: [
-                    Colors.black.withValues(alpha: 0.7),
-                    Colors.transparent,
-                  ],
+          _buildEditOverlay(),
+        ],
+      ),
+    );
+  }
+
+  /// Build image preview for network URL (edit mode - AC2)
+  Widget _buildNetworkImagePreview() {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppSpacing.radiusLg - 2),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.network(
+            existingImageUrl!,
+            fit: BoxFit.cover,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Container(
+                color: AppColors.surface,
+                child: const Center(
+                  child: CircularProgressIndicator(),
                 ),
-              ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.edit,
-                    color: Colors.white,
-                    size: 16,
-                  ),
-                  SizedBox(width: 4),
-                  Text(
-                    'Tap untuk mengubah',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
+              );
+            },
+            errorBuilder: (context, error, stackTrace) {
+              return _buildErrorState();
+            },
+          ),
+          _buildEditOverlay(),
+        ],
+      ),
+    );
+  }
+
+  /// Build error state when image fails to load
+  Widget _buildErrorState() {
+    return Container(
+      color: AppColors.surface,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.broken_image,
+            size: 48,
+            color: AppColors.error.withValues(alpha: 0.7),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'Gagal memuat preview',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Tap untuk memilih foto baru',
+            style: TextStyle(
+              color: AppColors.textSecondary.withValues(alpha: 0.7),
+              fontSize: 10,
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Build overlay with edit hint
+  Widget _buildEditOverlay() {
+    return Positioned(
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          vertical: AppSpacing.sm,
+          horizontal: AppSpacing.md,
+        ),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.bottomCenter,
+            end: Alignment.topCenter,
+            colors: [
+              Colors.black.withValues(alpha: 0.7),
+              Colors.transparent,
+            ],
+          ),
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.edit,
+              color: Colors.white,
+              size: 16,
+            ),
+            SizedBox(width: 4),
+            Text(
+              'Tap untuk mengubah',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -285,4 +285,178 @@ class ItemRepository {
       throw Exception('Gagal menyimpan barang: $e');
     }
   }
+
+  /// Update an existing item in the database (Story 3.5 - AC5, AC6)
+  /// Handles image upload if new image provided
+  /// Sets image_url to null if imageRemoved flag is true
+  /// Returns the updated Item object
+  ///
+  /// [id] - Item ID to update
+  /// [imageFile] - New image to upload (optional)
+  /// [imageRemoved] - Flag to clear existing image (AC7)
+  Future<Item> updateItem({
+    required String id,
+    required String name,
+    String? categoryId,
+    required int buyPrice,
+    required int sellPrice,
+    required int stock,
+    required int stockThreshold,
+    required bool isActive,
+    File? imageFile,
+    bool imageRemoved = false,
+  }) async {
+    try {
+      String? newImageUrl;
+
+      // Handle image scenarios (AC6, AC7)
+      if (imageRemoved) {
+        // User explicitly removed image - set to null (AC7)
+        newImageUrl = null;
+      } else if (imageFile != null) {
+        // User selected new image - upload and get URL (AC6)
+        newImageUrl = await uploadImage(imageFile);
+      }
+      // If neither, keep existing image (don't include in update)
+
+      // Build update data
+      final updateData = <String, dynamic>{
+        'name': name,
+        'category_id': categoryId,
+        'buy_price': buyPrice,
+        'sell_price': sellPrice,
+        'stock': stock,
+        'stock_threshold': stockThreshold,
+        'is_active': isActive,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+
+      // Only include image_url if we're changing it (AC6, AC7)
+      if (imageRemoved || imageFile != null) {
+        updateData['image_url'] = newImageUrl;
+      }
+
+      // Update item record using Supabase
+      final response = await SupabaseService.client
+          .from('items')
+          .update(updateData)
+          .eq('id', id)
+          .select('*, categories(name)')
+          .single()
+          .timeout(_timeout);
+
+      return Item.fromJson(response);
+    } on TimeoutException {
+      throw Exception('Koneksi timeout. Silakan coba lagi.');
+    } catch (e) {
+      // Check for duplicate name error
+      if (e.toString().contains('duplicate') ||
+          e.toString().contains('unique') ||
+          e.toString().contains('23505')) {
+        throw Exception('Barang dengan nama ini sudah ada');
+      }
+      // Check for not found error (PGRST116)
+      if (e.toString().contains('PGRST116') ||
+          e.toString().contains('not found') ||
+          e.toString().contains('0 rows')) {
+        throw Exception('Barang tidak ditemukan');
+      }
+      throw Exception('Gagal memperbarui barang: $e');
+    }
+  }
+
+  /// Updates item stock to a new value (Stock Opname) (Story 3.7 - AC5, AC6)
+  ///
+  /// Returns the updated Item on success.
+  /// Throws exception on error.
+  ///
+  /// [id] - Item ID to update
+  /// [newStock] - New stock count value
+  Future<Item> updateStock(String id, int newStock) async {
+    try {
+      final response = await SupabaseService.client
+          .from('items')
+          .update({
+            'stock': newStock,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', id)
+          .select('*, categories(name)')
+          .maybeSingle()
+          .timeout(_timeout);
+
+      if (response == null) {
+        throw Exception('Barang tidak ditemukan');
+      }
+
+      return Item.fromJson(response);
+    } on TimeoutException {
+      throw Exception('Terjadi kesalahan. Silakan coba lagi.');
+    } on PostgrestException catch (e) {
+      if (e.code == 'PGRST116') {
+        throw Exception('Barang tidak ditemukan');
+      }
+      throw Exception('Terjadi kesalahan. Silakan coba lagi.');
+    } catch (e) {
+      // Re-throw our own exceptions
+      if (e.toString().contains('Barang tidak ditemukan')) {
+        rethrow;
+      }
+      if (e.toString().contains('network') ||
+          e.toString().contains('connection') ||
+          e.toString().contains('SocketException')) {
+        throw Exception('Gagal memperbarui stok. Periksa koneksi internet.');
+      }
+      if (e is Exception) rethrow;
+      throw Exception('Terjadi kesalahan. Silakan coba lagi.');
+    }
+  }
+
+  /// Soft deletes an item by setting is_active = false (Story 3.6 - AC3)
+  /// 
+  /// Returns true if deletion was successful.
+  /// Throws exception on error.
+  /// M3 fix: Now uses .select().maybeSingle() to verify row was actually updated
+  /// 
+  /// [id] - Item ID to delete
+  Future<bool> deleteItem(String id) async {
+    try {
+      // M3 fix: Use .select().maybeSingle() to verify update actually happened
+      final response = await SupabaseService.client
+          .from('items')
+          .update({
+            'is_active': false,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', id)
+          .select('id')
+          .maybeSingle()
+          .timeout(_timeout);
+      
+      // M3 fix: Check if row was actually updated
+      if (response == null) {
+        throw Exception('Barang tidak ditemukan');
+      }
+      
+      return true;
+    } on TimeoutException {
+      throw Exception('Terjadi kesalahan. Silakan coba lagi.');
+    } on PostgrestException catch (e) {
+      if (e.code == 'PGRST116') {
+        throw Exception('Barang tidak ditemukan');
+      }
+      throw Exception('Terjadi kesalahan. Silakan coba lagi.');
+    } catch (e) {
+      // Re-throw our own exceptions
+      if (e.toString().contains('Barang tidak ditemukan')) {
+        rethrow;
+      }
+      if (e.toString().contains('network') || 
+          e.toString().contains('connection') ||
+          e.toString().contains('SocketException')) {
+        throw Exception('Gagal menghapus. Periksa koneksi internet.');
+      }
+      throw Exception('Terjadi kesalahan. Silakan coba lagi.');
+    }
+  }
 }

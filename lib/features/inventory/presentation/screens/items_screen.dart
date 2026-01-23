@@ -70,6 +70,7 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
   /// Navigate to edit item screen (Story 3.5 - AC1)
   /// Uses context.push with item data via extra parameter
   void _navigateToEditItem(Item item) {
+    debugPrint('[ITEMS] _navigateToEditItem called. item.id=${item.id}, item.imageUrl=${item.imageUrl}');
     context.push('${AppRoutes.itemEdit}/${item.id}', extra: item);
   }
 

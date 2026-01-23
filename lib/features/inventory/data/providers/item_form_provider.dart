@@ -116,12 +116,14 @@ class ItemFormNotifier extends Notifier<ItemFormState> {
     }
   }
 
-  /// Update an existing item with optional new image (Story 3.5 - AC5, AC8)
+  /// Update an existing item with optional new image (Story 3.5 - AC5, AC8; Story 3.8 - AC1, AC2, AC6)
   /// Uploads new image if provided, handles image removal
+  /// Deletes old image from storage when replacing or removing photo (Story 3.8)
   ///
   /// [itemId] - ID of item to update
   /// [imageFile] - New image file to upload (optional)
   /// [imageRemoved] - Flag indicating user removed the existing image (AC7)
+  /// [oldImageUrl] - Old image URL to delete from storage (Story 3.8 - AC1, AC2)
   Future<bool> updateItem({
     required String itemId,
     required String name,
@@ -133,6 +135,7 @@ class ItemFormNotifier extends Notifier<ItemFormState> {
     required bool isActive,
     File? imageFile,
     bool imageRemoved = false,
+    String? oldImageUrl, // Story 3.8 - AC1, AC2
   }) async {
     // Set loading state
     state = state.copyWith(status: ItemFormStatus.loading);
@@ -140,7 +143,7 @@ class ItemFormNotifier extends Notifier<ItemFormState> {
     try {
       final repository = ref.read(itemRepositoryProvider);
 
-      // Update item record (repository handles image upload/removal)
+      // Update item record (repository handles image upload/removal and old image deletion)
       final updatedItem = await repository.updateItem(
         id: itemId,
         name: name,
@@ -152,6 +155,7 @@ class ItemFormNotifier extends Notifier<ItemFormState> {
         isActive: isActive,
         imageFile: imageFile,
         imageRemoved: imageRemoved,
+        oldImageUrl: oldImageUrl, // Story 3.8 - Pass old image URL
       );
 
       // Set success state
@@ -235,25 +239,27 @@ class ItemFormNotifier extends Notifier<ItemFormState> {
     return 'Terjadi kesalahan. Silakan coba lagi.';
   }
 
-  /// Deletes an item (soft delete - sets is_active = false) (Story 3.6 - AC3)
-  /// 
+  /// Deletes an item (soft delete - sets is_active = false) (Story 3.6 - AC3; Story 3.8 - AC3, AC6)
+  ///
   /// Returns true if deletion was successful.
   /// Updates state to loading during operation and success/error on completion.
   /// Invalidates items list provider on success.
-  /// 
+  /// Deletes image from storage before soft delete (Story 3.8 - AC3)
+  ///
   /// [itemId] - ID of item to delete
-  Future<bool> deleteItem(String itemId) async {
+  /// [imageUrl] - Image URL to delete from storage (Story 3.8 - AC3)
+  Future<bool> deleteItem(String itemId, {String? imageUrl}) async {
     state = state.copyWith(status: ItemFormStatus.loading);
-    
+
     try {
       final repository = ref.read(itemRepositoryProvider);
-      await repository.deleteItem(itemId);
-      
+      await repository.deleteItem(itemId, imageUrl: imageUrl); // Story 3.8 - Pass image URL
+
       state = state.copyWith(status: ItemFormStatus.success);
-      
+
       // Refresh items list to remove deleted item
       ref.invalidate(itemListNotifierProvider);
-      
+
       return true;
     } catch (e) {
       state = state.copyWith(

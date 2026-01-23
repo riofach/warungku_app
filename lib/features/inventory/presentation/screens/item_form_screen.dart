@@ -48,9 +48,12 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
 
   // Delete operation state (Story 3.6 - AC6)
   bool _isDeleting = false;
-  
+
   // Stock Opname state - tracks current stock for button display (Story 3.7 - H4 fix)
   int? _currentDisplayStock;
+
+  // Story 3.8: Cache oldImageUrl to prevent data loss during form lifecycle (FIX for oldImageUrl=null issue)
+  String? _cachedOldImageUrl;
 
   /// Whether the form is in edit mode
   bool get isEditMode => widget.item != null;
@@ -58,6 +61,14 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
   @override
   void initState() {
     super.initState();
+    
+    // Debug: Log what item we received
+    debugPrint('[ITEMFORM] initState called. widget.item=${widget.item}');
+    if (widget.item != null) {
+      debugPrint('[ITEMFORM] Received item for edit: id=${widget.item!.id}, name=${widget.item!.name}, imageUrl=${widget.item!.imageUrl}');
+    } else {
+      debugPrint('[ITEMFORM] No item - creating new item');
+    }
     
     // Reset form state to clear any previous errors (H3 fix from code review)
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -67,6 +78,9 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
     // Pre-fill form if in edit mode
     if (isEditMode) {
       _prefillFormWithItemData(widget.item!);
+      // Story 3.8: Cache oldImageUrl to prevent data loss during form lifecycle
+      _cachedOldImageUrl = widget.item!.imageUrl;
+      debugPrint('[ITEMFORM] Cached oldImageUrl: $_cachedOldImageUrl');
     }
     
     _setupDirtyTracking();
@@ -74,7 +88,7 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
     // Load categories for dropdown
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(categoryListNotifierProvider.notifier).loadCategories();
-    });
+     });
   }
 
   /// Pre-fill form fields with existing item data (AC2)
@@ -461,38 +475,42 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
     
     final success = await ref
         .read(itemFormNotifierProvider.notifier)
-        .deleteItem(widget.item!.id);
+        .deleteItem(
+          widget.item!.id,
+          imageUrl: widget.item!.imageUrl, // Story 3.8 - Pass image URL for deletion
+        );
     
     // M1 fix: Check mounted before setState
     if (!mounted) return;
-    
+
     setState(() => _isDeleting = false);
-    
-    if (success) {
-      // M1 fix: Check mounted before ScaffoldMessenger access
+
+    // Schedule snackbar and navigation after current build completes to avoid setState during build error
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Double-check mounted after frame callback
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Barang berhasil dihapus'),
-          backgroundColor: AppColors.success,
-        ),
-      );
-      if (!mounted) return;
-      // Use context.go() instead of pop() to ensure correct navigation
-      // This fixes the issue where pop() navigates to wrong screen (/settings instead of /items)
-      // because /items and /items/edit are standalone routes outside ShellRoute
-      context.go(AppRoutes.items);
-    } else {
-      // M1 fix: Check mounted before accessing context for error snackbar
-      if (!mounted) return;
-      final errorMessage = ref.read(itemFormNotifierProvider).errorMessage;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(errorMessage ?? 'Gagal menghapus barang'),
-          backgroundColor: AppColors.error,
-        ),
-      );
-    }
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Barang berhasil dihapus'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+        // Use context.go() instead of pop() to ensure correct navigation
+        // This fixes issue where pop() navigates to wrong screen (/settings instead of /items)
+        // because /items and /items/edit are standalone routes outside ShellRoute
+        context.go(AppRoutes.items);
+      } else {
+        final errorMessage = ref.read(itemFormNotifierProvider).errorMessage;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage ?? 'Gagal menghapus barang'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    });
   }
 
   /// Submit form - create new item or update existing (AC5)
@@ -505,7 +523,11 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
     final threshold = int.tryParse(_thresholdController.text) ?? 10;
 
     if (isEditMode) {
-      // Update existing item
+      // Update existing item - pass oldImageUrl for orphan cleanup (Story 3.8 - AC1, AC2)
+      // Story 3.8 FIX: Use cached oldImageUrl instead of widget.item.imageUrl to prevent data loss
+      final oldImageUrlToPass = _cachedOldImageUrl;
+      debugPrint('[ITEMFORM] Passing oldImageUrl to updateItem: $oldImageUrlToPass');
+      
       ref.read(itemFormNotifierProvider.notifier).updateItem(
             itemId: widget.item!.id,
             name: _nameController.text.trim(),
@@ -517,6 +539,7 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
             isActive: _isActive,
             imageFile: _selectedImage,
             imageRemoved: _imageRemoved,
+            oldImageUrl: oldImageUrlToPass, // Story 3.8 - Pass cached old image URL
           );
     } else {
       // Create new item

@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:path_provider/path_provider.dart';
@@ -15,6 +15,32 @@ import '../models/item_model.dart';
 class ItemRepository {
   /// Timeout duration for database operations
   static const Duration _timeout = Duration(seconds: 30);
+
+  /// Extracts file path from Supabase Storage public URL (Story 3.8 - AC5)
+  ///
+  /// Example URL: https://xxx.supabase.co/storage/v1/object/public/product-images/items/uuid_timestamp.jpg
+  /// Returns: items/uuid_timestamp.jpg
+  ///
+  /// Returns null if URL is null, empty, malformed, or doesn't contain bucket name.
+  static String? extractFilePathFromUrl(String? imageUrl) {
+    if (imageUrl == null || imageUrl.isEmpty) return null;
+
+    try {
+      final uri = Uri.parse(imageUrl);
+      final pathSegments = uri.pathSegments;
+
+      // Find index of bucket name "product-images"
+      final bucketIndex = pathSegments.indexOf('product-images');
+      if (bucketIndex == -1 || bucketIndex >= pathSegments.length - 1) {
+        return null;
+      }
+
+      // Return everything after bucket name
+      return pathSegments.sublist(bucketIndex + 1).join('/');
+    } catch (e) {
+      return null;
+    }
+  }
 
   /// Get all active items from database with category join
   /// Supports optional search query and category filter
@@ -241,6 +267,48 @@ class ItemRepository {
     }
   }
 
+  /// Deletes an image from Supabase Storage (Story 3.8 - Task 1.2, AC1, AC2, AC3, AC6)
+  ///
+  /// Returns true if deletion successful, false otherwise.
+  /// This method is non-blocking - errors are logged but not thrown (AC6).
+  ///
+  /// [imageUrl] - Public URL of image to delete
+  ///
+  /// Behavior:
+  /// - Returns true if imageUrl is null or empty (nothing to delete)
+  /// - Extracts file path from URL and calls Supabase Storage remove()
+  /// - Logs errors but doesn't throw (non-blocking for AC6)
+  Future<bool> deleteImage(String? imageUrl) async {
+    debugPrint('[DELETE IMAGE] Starting deletion. imageUrl: $imageUrl');
+
+    if (imageUrl == null || imageUrl.isEmpty) {
+      debugPrint('[DELETE IMAGE] imageUrl is null or empty, nothing to delete. Returning true.');
+      return true;
+    }
+
+    final filePath = extractFilePathFromUrl(imageUrl);
+    if (filePath == null) {
+      debugPrint('[DELETE IMAGE] Could not extract file path from URL: $imageUrl');
+      return false;
+    }
+
+    debugPrint('[DELETE IMAGE] Extracted file path: $filePath');
+
+    try {
+      await SupabaseService.client
+          .storage
+          .from('product-images')
+          .remove([filePath]);
+
+      debugPrint('[DELETE IMAGE] Successfully deleted image: $filePath');
+      return true;
+    } catch (e) {
+      // Log error but don't throw - this is non-blocking (AC6)
+      debugPrint('[DELETE IMAGE] Failed to delete image $filePath: $e');
+      return false;
+    }
+  }
+
   /// Create a new item in the database
   /// Returns the ID of the created item
   Future<String> createItem({
@@ -286,14 +354,16 @@ class ItemRepository {
     }
   }
 
-  /// Update an existing item in the database (Story 3.5 - AC5, AC6)
+  /// Update an existing item in the database (Story 3.5 - AC5, AC6; Story 3.8 - AC1, AC2, AC4, AC6)
   /// Handles image upload if new image provided
   /// Sets image_url to null if imageRemoved flag is true
-  /// Returns the updated Item object
+  /// Deletes old image from storage when replacing or removing photo (Story 3.8 - AC1, AC2)
+  /// Returns = updated Item object
   ///
   /// [id] - Item ID to update
   /// [imageFile] - New image to upload (optional)
   /// [imageRemoved] - Flag to clear existing image (AC7)
+  /// [oldImageUrl] - Old image URL to delete from storage (Story 3.8 - AC1, AC2)
   Future<Item> updateItem({
     required String id,
     required String name,
@@ -305,17 +375,34 @@ class ItemRepository {
     required bool isActive,
     File? imageFile,
     bool imageRemoved = false,
+    String? oldImageUrl, // Story 3.8 - AC1, AC2
   }) async {
+    debugPrint('[UPDATE ITEM] Starting updateItem. id=$id, oldImageUrl=$oldImageUrl, imageRemoved=$imageRemoved, imageFile=${imageFile != null}');
+
     try {
       String? newImageUrl;
 
       // Handle image scenarios (AC6, AC7)
       if (imageRemoved) {
-        // User explicitly removed image - set to null (AC7)
+        // User explicitly removed image - delete old image if exists (Story 3.8 - AC2, AC4, AC6)
+        if (oldImageUrl != null) {
+          debugPrint('[UPDATE ITEM] User removed photo - deleting old image: $oldImageUrl');
+          await deleteImage(oldImageUrl); // Non-blocking
+        } else {
+          debugPrint('[UPDATE ITEM] User removed photo but oldImageUrl is null - nothing to delete');
+        }
         newImageUrl = null;
       } else if (imageFile != null) {
-        // User selected new image - upload and get URL (AC6)
+        // User selected new image - delete old image first (Story 3.8 - AC1, AC6)
+        if (oldImageUrl != null) {
+          debugPrint('[UPDATE ITEM] User selected new photo - deleting old image: $oldImageUrl');
+          await deleteImage(oldImageUrl); // Non-blocking
+        } else {
+          debugPrint('[UPDATE ITEM] User selected new photo but oldImageUrl is null - nothing to delete');
+        }
+        // Upload new image
         newImageUrl = await uploadImage(imageFile);
+        debugPrint('[UPDATE ITEM] New image uploaded: $newImageUrl');
       }
       // If neither, keep existing image (don't include in update)
 
@@ -412,15 +499,27 @@ class ItemRepository {
     }
   }
 
-  /// Soft deletes an item by setting is_active = false (Story 3.6 - AC3)
-  /// 
+  /// Soft deletes an item by setting is_active = false (Story 3.6 - AC3; Story 3.8 - AC3, AC4, AC6)
+  ///
   /// Returns true if deletion was successful.
   /// Throws exception on error.
   /// M3 fix: Now uses .select().maybeSingle() to verify row was actually updated
-  /// 
+  /// Story 3.8: Delete image from storage before soft delete (AC3)
+  ///
   /// [id] - Item ID to delete
-  Future<bool> deleteItem(String id) async {
+  /// [imageUrl] - Image URL to delete from storage (Story 3.8 - AC3)
+  Future<bool> deleteItem(String id, {String? imageUrl}) async {
+    debugPrint('[DELETE ITEM] Starting deleteItem. id=$id, imageUrl=$imageUrl');
+
     try {
+      // Story 3.8: Delete image from storage first (non-blocking) (AC3, AC4, AC6)
+      if (imageUrl != null) {
+        debugPrint('[DELETE ITEM] Attempting to delete image: $imageUrl');
+        await deleteImage(imageUrl);
+      } else {
+        debugPrint('[DELETE ITEM] No image to delete (imageUrl is null)');
+      }
+
       // M3 fix: Use .select().maybeSingle() to verify update actually happened
       final response = await SupabaseService.client
           .from('items')
@@ -432,12 +531,14 @@ class ItemRepository {
           .select('id')
           .maybeSingle()
           .timeout(_timeout);
-      
+
       // M3 fix: Check if row was actually updated
       if (response == null) {
+        debugPrint('[DELETE ITEM] Item not found or already deleted');
         throw Exception('Barang tidak ditemukan');
       }
-      
+
+      debugPrint('[DELETE ITEM] Successfully soft deleted item: $id');
       return true;
     } on TimeoutException {
       throw Exception('Terjadi kesalahan. Silakan coba lagi.');
@@ -451,7 +552,7 @@ class ItemRepository {
       if (e.toString().contains('Barang tidak ditemukan')) {
         rethrow;
       }
-      if (e.toString().contains('network') || 
+      if (e.toString().contains('network') ||
           e.toString().contains('connection') ||
           e.toString().contains('SocketException')) {
         throw Exception('Gagal menghapus. Periksa koneksi internet.');

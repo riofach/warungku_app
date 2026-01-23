@@ -104,7 +104,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '${AppRoutes.itemEdit}/:id',
         redirect: (context, state) {
           // If extra is null (e.g., deep link), redirect to items list
-          // In production, could fetch item by ID instead
           if (state.extra == null) {
             return AppRoutes.items;
           }
@@ -113,6 +112,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           // Get item from extra parameter (guaranteed non-null by redirect)
           final item = state.extra as Item?;
+          // Debug: Log item details
+          debugPrint('[ROUTER] Building ItemFormScreen. itemId=${state.uri.pathSegments.last}, item=$item');
+          if (item != null) {
+            debugPrint('[ROUTER] item.imageUrl: ${item.imageUrl}, item.name: ${item.name}');
+          } else {
+            debugPrint('[ROUTER] item is null - this should not happen after redirect');
+          }
           return ItemFormScreen(item: item);
         },
       ),

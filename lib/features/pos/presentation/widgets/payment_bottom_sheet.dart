@@ -7,6 +7,7 @@ import '../../../../core/utils/formatters.dart';
 import '../../data/providers/cart_provider.dart';
 import '../../data/providers/payment_provider.dart';
 import 'cash_payment_section.dart';
+import 'qris_payment_section.dart';
 
 class PaymentBottomSheet extends ConsumerStatefulWidget {
   const PaymentBottomSheet({super.key});
@@ -53,7 +54,7 @@ class _PaymentBottomSheetState extends ConsumerState<PaymentBottomSheet> {
           Flexible(
             child: paymentMethod == PaymentMethod.cash
                 ? const CashPaymentSection()
-                : const _QrisPaymentPlaceholder(), // Story 4.4
+                : const QrisPaymentSection(),
           ),
         ],
       ),
@@ -203,27 +204,5 @@ class _PaymentBottomSheetState extends ConsumerState<PaymentBottomSheet> {
     } else {
       navigator.pop();
     }
-  }
-}
-
-/// Placeholder for QRIS payment (Story 4.4)
-class _QrisPaymentPlaceholder extends StatelessWidget {
-  const _QrisPaymentPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Padding(
-        padding: EdgeInsets.all(AppSpacing.xl),
-        child: Text(
-          'QRIS Payment akan diimplementasikan di Story 4.4',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 16,
-          ),
-        ),
-      ),
-    );
   }
 }

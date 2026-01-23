@@ -46,8 +46,102 @@ void main() {
       expect(find.byIcon(Icons.remove), findsOneWidget);
     });
 
-    // Note: Interaction tests (increment/decrement/delete) require more complex 
-    // mocking of the Notifier which is better covered in provider tests or integration tests
-    // For now we just verify rendering correctness.
+    testWidgets('should disable increment button when at stock limit', (WidgetTester tester) async {
+      final item = createTestItem('1', 'Test Product', 50000, 5);
+      final cartItem = CartItem(item: item, quantity: 5); // At stock limit
+
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: CartItemTile(cartItem: cartItem),
+            ),
+          ),
+        ),
+      );
+
+      // Find all IconButtons
+      final iconButtons = tester.widgetList<IconButton>(find.byType(IconButton));
+      
+      // The add button should be the third IconButton (after decrement and before delete)
+      // Index: 0 = decrement, 1 = increment, 2 = delete
+      final incrementButton = iconButtons.elementAt(1);
+      
+      // Verify it's disabled
+      expect(incrementButton.onPressed, isNull);
+    });
+
+    testWidgets('should enable increment button when below stock limit', (WidgetTester tester) async {
+      final item = createTestItem('1', 'Test Product', 50000, 10);
+      final cartItem = CartItem(item: item, quantity: 5); // Below stock limit
+
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: CartItemTile(cartItem: cartItem),
+            ),
+          ),
+        ),
+      );
+
+      // Find all IconButtons
+      final iconButtons = tester.widgetList<IconButton>(find.byType(IconButton));
+      
+      // The add button should be the second IconButton
+      final incrementButton = iconButtons.elementAt(1);
+      
+      // Verify it's enabled
+      expect(incrementButton.onPressed, isNotNull);
+    });
+
+    testWidgets('should disable decrement button when quantity is 1', (WidgetTester tester) async {
+      final item = createTestItem('1', 'Test Product', 50000, 10);
+      final cartItem = CartItem(item: item, quantity: 1);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: CartItemTile(cartItem: cartItem),
+            ),
+          ),
+        ),
+      );
+
+      // Find all IconButtons
+      final iconButtons = tester.widgetList<IconButton>(find.byType(IconButton));
+      
+      // The decrement button should be the first IconButton
+      final decrementButton = iconButtons.elementAt(0);
+      
+      // Verify it's disabled
+      expect(decrementButton.onPressed, isNull);
+    });
+
+    testWidgets('should show delete confirmation dialog on delete tap', (WidgetTester tester) async {
+      final item = createTestItem('1', 'Test Product', 50000, 10);
+      final cartItem = CartItem(item: item, quantity: 2);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: CartItemTile(cartItem: cartItem),
+            ),
+          ),
+        ),
+      );
+
+      // Tap delete button
+      await tester.tap(find.byIcon(Icons.delete_outline));
+      await tester.pumpAndSettle();
+
+      // Verify dialog appears
+      expect(find.text('Hapus Item?'), findsOneWidget);
+      expect(find.text('Hapus "Test Product" dari keranjang?'), findsOneWidget);
+      expect(find.text('Batal'), findsOneWidget);
+      expect(find.text('Hapus'), findsOneWidget);
+    });
   });
 }

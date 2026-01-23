@@ -45,7 +45,7 @@ void main() {
       expect(find.text('Keranjang'), findsOneWidget);
       expect(find.text('Keranjang Kosong'), findsOneWidget);
       expect(find.text('Belum ada barang yang ditambahkan'), findsOneWidget);
-      expect(find.text('Bayar Sekarang'), findsNothing);
+      expect(find.text('Bayar'), findsNothing); // Button should not show when empty
     });
 
     testWidgets('should show items and total when cart has items', (WidgetTester tester) async {
@@ -75,7 +75,7 @@ void main() {
       // We expect 2 occurrences: one in the cart item tile (subtotal) and one in the footer (total)
       expect(find.text('Rp 20.000'), findsNWidgets(2)); 
       
-      expect(find.text('Bayar Sekarang'), findsOneWidget);
+      expect(find.text('Bayar'), findsOneWidget); // Updated to match AC #2
     });
   });
 }

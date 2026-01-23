@@ -145,7 +145,7 @@ class CartBottomSheet extends ConsumerWidget {
             const SizedBox(height: AppSpacing.md),
             SizedBox(
               width: double.infinity,
-              child: FilledButton(
+              child:               FilledButton(
                 onPressed: () {
                   // TODO: Navigate to payment screen
                   // context.pushNamed(AppRouter.payment);
@@ -153,7 +153,7 @@ class CartBottomSheet extends ConsumerWidget {
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
                 ),
-                child: const Text('Bayar Sekarang'),
+                child: const Text('Bayar'),
               ),
             ),
           ],

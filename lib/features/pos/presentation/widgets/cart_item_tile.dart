@@ -21,8 +21,6 @@ class CartItemTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final item = cartItem.item;
-    // Real-time stock check for increment button
-    final canAddMore = ref.read(cartNotifierProvider.notifier).canAddMore(item.id);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
@@ -151,15 +149,7 @@ class CartItemTile extends ConsumerWidget {
                     ref.read(cartNotifierProvider.notifier)
                         .incrementQuantity(cartItem.item.id);
                   }
-                : () {
-                   ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Stok terbatas (Sisa: ${cartItem.item.stock})'),
-                        backgroundColor: AppColors.error,
-                        duration: const Duration(seconds: 1),
-                      ),
-                    );
-                },
+                : null, // Disabled when at stock limit (AC #6)
           ),
         ],
       ),
@@ -167,6 +157,9 @@ class CartItemTile extends ConsumerWidget {
   }
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
+    // Capture messenger before async gap (pre-commit checklist E3-A1)
+    final messenger = ScaffoldMessenger.of(context);
+    
     final confirmed = await showDialog<bool>(
       context: context,
       barrierDismissible: true,

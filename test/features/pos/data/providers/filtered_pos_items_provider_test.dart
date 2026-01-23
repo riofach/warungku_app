@@ -24,7 +24,7 @@ void main() {
       expect(filteredItems, isEmpty);
     });
 
-    test('should return all items when no filter applied', () {
+    test('should return all items when no filter applied', () async {
       // Create test items
       final items = [
         _createTestItem('1', 'Indomie Goreng', categoryId: 'cat-1'),
@@ -33,18 +33,20 @@ void main() {
       ];
 
       // Override the provider state to loaded
-      // Simulate loaded state by setting state directly
       container = ProviderContainer(
         overrides: [
           posItemsNotifierProvider.overrideWith(() => _MockPosItemsNotifier(items)),
         ],
       );
+      
+      // Wait for the provider to initialize (AsyncValue)
+      await container.read(posItemsNotifierProvider.future);
 
       final filteredItems = container.read(filteredPosItemsProvider);
       expect(filteredItems.length, 3);
     });
 
-    test('should filter items by search query (case-insensitive)', () {
+    test('should filter items by search query (case-insensitive)', () async {
       final items = [
         _createTestItem('1', 'Indomie Goreng', categoryId: 'cat-1'),
         _createTestItem('2', 'Aqua 600ml', categoryId: 'cat-2'),
@@ -56,6 +58,9 @@ void main() {
           posItemsNotifierProvider.overrideWith(() => _MockPosItemsNotifier(items)),
         ],
       );
+
+      // Wait for initialization
+      await container.read(posItemsNotifierProvider.future);
 
       // Set search query
       container.read(posSearchQueryProvider.notifier).state = 'mie';
@@ -66,7 +71,7 @@ void main() {
       expect(filteredItems.any((item) => item.name == 'Mie Sedap'), true);
     });
 
-    test('should filter items by category', () {
+    test('should filter items by category', () async {
       final items = [
         _createTestItem('1', 'Indomie Goreng', categoryId: 'cat-1'),
         _createTestItem('2', 'Aqua 600ml', categoryId: 'cat-2'),
@@ -79,6 +84,9 @@ void main() {
         ],
       );
 
+      // Wait for initialization
+      await container.read(posItemsNotifierProvider.future);
+
       // Set category filter
       container.read(posCategoryFilterProvider.notifier).state = 'cat-1';
 
@@ -87,7 +95,7 @@ void main() {
       expect(filteredItems.every((item) => item.categoryId == 'cat-1'), true);
     });
 
-    test('should combine search and category filters', () {
+    test('should combine search and category filters', () async {
       final items = [
         _createTestItem('1', 'Indomie Goreng', categoryId: 'cat-1'),
         _createTestItem('2', 'Aqua 600ml', categoryId: 'cat-2'),
@@ -101,6 +109,9 @@ void main() {
         ],
       );
 
+      // Wait for initialization
+      await container.read(posItemsNotifierProvider.future);
+
       // Set both filters
       container.read(posSearchQueryProvider.notifier).state = 'indomie';
       container.read(posCategoryFilterProvider.notifier).state = 'cat-1';
@@ -111,7 +122,7 @@ void main() {
       expect(filteredItems.every((item) => item.categoryId == 'cat-1'), true);
     });
 
-    test('should return empty list when search query has no matches', () {
+    test('should return empty list when search query has no matches', () async {
       final items = [
         _createTestItem('1', 'Indomie Goreng', categoryId: 'cat-1'),
         _createTestItem('2', 'Aqua 600ml', categoryId: 'cat-2'),
@@ -122,6 +133,9 @@ void main() {
           posItemsNotifierProvider.overrideWith(() => _MockPosItemsNotifier(items)),
         ],
       );
+
+      // Wait for initialization
+      await container.read(posItemsNotifierProvider.future);
 
       // Set search query with no matches
       container.read(posSearchQueryProvider.notifier).state = 'xyz123';
@@ -168,7 +182,7 @@ void main() {
   });
 
   group('filteredPosItemsCountProvider', () {
-    test('should return count of filtered items', () {
+    test('should return count of filtered items', () async {
       final items = [
         _createTestItem('1', 'Indomie Goreng', categoryId: 'cat-1'),
         _createTestItem('2', 'Aqua 600ml', categoryId: 'cat-2'),
@@ -180,6 +194,9 @@ void main() {
           posItemsNotifierProvider.overrideWith(() => _MockPosItemsNotifier(items)),
         ],
       );
+
+      // Wait for initialization
+      await container.read(posItemsNotifierProvider.future);
 
       container.read(posSearchQueryProvider.notifier).state = 'mie';
 
@@ -198,13 +215,13 @@ class _MockPosItemsNotifier extends PosItemsNotifier {
   _MockPosItemsNotifier(this._items);
 
   @override
-  PosItemsState build() {
-    return PosItemsState.loaded(_items);
+  Future<List<Item>> build() async {
+    return _items;
   }
 
-  @override
-  Future<void> loadItems() async {
-    state = PosItemsState.loaded(_items);
+  // Helper to simulate state update for testing
+  void updateState(List<Item> items) {
+    state = AsyncValue.data(items);
   }
 }
 

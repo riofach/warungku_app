@@ -34,9 +34,8 @@ class _PosScreenState extends ConsumerState<PosScreen> {
   @override
   void initState() {
     super.initState();
-    // Load items and categories on init
+    // Load categories on init (items loaded by AsyncValue automatically)
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(posItemsNotifierProvider.notifier).loadItems();
       ref.read(categoryListNotifierProvider.notifier).loadCategories();
     });
   }
@@ -66,7 +65,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final itemsState = ref.watch(posItemsNotifierProvider);
+    final itemsAsync = ref.watch(posItemsNotifierProvider);
     final filteredItems = ref.watch(filteredPosItemsProvider);
     final categoriesState = ref.watch(categoryListNotifierProvider);
     final searchQuery = ref.watch(posSearchQueryProvider);
@@ -88,7 +87,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
 
           // Product grid
           Expanded(
-            child: _buildProductGrid(itemsState, filteredItems),
+            child: _buildProductGrid(itemsAsync, filteredItems),
           ),
         ],
       ),
@@ -171,58 +170,54 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     );
   }
 
-  Widget _buildProductGrid(PosItemsState itemsState, List filteredItems) {
-    // Loading state
-    if (itemsState.isLoading) {
-      return const LoadingWidget(message: 'Memuat barang...');
-    }
-
-    // Error state
-    if (itemsState.hasError) {
-      return app_error.AppErrorWidget(
-        message: itemsState.errorMessage ?? 'Terjadi kesalahan',
-        onRetry: () => ref.read(posItemsNotifierProvider.notifier).loadItems(),
-      );
-    }
-
-    // Empty state (no items at all)
-    if (itemsState.isEmpty) {
-      return const EmptyStateWidget(
-        icon: Icons.inventory_2_outlined,
-        title: 'Belum ada barang',
-        subtitle: 'Tambahkan barang terlebih dahulu di menu Stok',
-      );
-    }
-
-    // Empty search results
-    if (filteredItems.isEmpty) {
-      return const EmptyStateWidget(
-        icon: Icons.search_off,
-        title: 'Tidak ditemukan',
-        subtitle: 'Coba kata kunci atau kategori lain',
-      );
-    }
-
-    // Product grid
-    return RefreshIndicator(
-      onRefresh: () async {
-        await ref.read(posItemsNotifierProvider.notifier).refresh();
-        await ref.read(categoryListNotifierProvider.notifier).refresh();
-      },
-      child: GridView.builder(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: AppSpacing.sm,
-          mainAxisSpacing: AppSpacing.sm,
-          childAspectRatio: 0.70, // Adjust based on card design
-        ),
-        itemCount: filteredItems.length,
-        itemBuilder: (context, index) {
-          final item = filteredItems[index];
-          return PosProductCard(item: item);
-        },
+  Widget _buildProductGrid(AsyncValue<List<dynamic>> itemsAsync, List filteredItems) {
+    return itemsAsync.when(
+      loading: () => const LoadingWidget(message: 'Memuat barang...'),
+      error: (error, stack) => app_error.AppErrorWidget(
+        message: error.toString().replaceFirst('Exception: ', ''),
+        onRetry: () => ref.refresh(posItemsNotifierProvider),
       ),
+      data: (items) {
+        // Empty state (no items at all)
+        if (items.isEmpty) {
+          return const EmptyStateWidget(
+            icon: Icons.inventory_2_outlined,
+            title: 'Belum ada barang',
+            subtitle: 'Tambahkan barang terlebih dahulu di menu Stok',
+          );
+        }
+
+        // Empty search results
+        if (filteredItems.isEmpty) {
+          return const EmptyStateWidget(
+            icon: Icons.search_off,
+            title: 'Tidak ditemukan',
+            subtitle: 'Coba kata kunci atau kategori lain',
+          );
+        }
+
+        // Product grid
+        return RefreshIndicator(
+          onRefresh: () async {
+            await ref.refresh(posItemsNotifierProvider.future);
+            await ref.read(categoryListNotifierProvider.notifier).refresh();
+          },
+          child: GridView.builder(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: AppSpacing.sm,
+              mainAxisSpacing: AppSpacing.sm,
+              childAspectRatio: 0.70, // Adjust based on card design
+            ),
+            itemCount: filteredItems.length,
+            itemBuilder: (context, index) {
+              final item = filteredItems[index];
+              return PosProductCard(item: item);
+            },
+          ),
+        );
+      },
     );
   }
 }

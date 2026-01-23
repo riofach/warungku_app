@@ -9,34 +9,36 @@ import 'pos_category_filter_provider.dart';
 /// Combines search query and category filter to filter the items list
 /// This is a computed provider that watches the source providers
 final filteredPosItemsProvider = Provider<List<Item>>((ref) {
-  final itemsState = ref.watch(posItemsNotifierProvider);
+  final itemsAsyncValue = ref.watch(posItemsNotifierProvider);
   final searchQuery = ref.watch(posSearchQueryProvider);
   final categoryId = ref.watch(posCategoryFilterProvider);
 
   // Return empty list if not loaded
-  if (!itemsState.isLoaded) {
-    return [];
-  }
+  return itemsAsyncValue.when(
+    data: (items) {
+      // Start with all items
+      var filteredItems = items;
 
-  // Start with all items
-  var filteredItems = itemsState.items;
+      // Apply category filter
+      if (categoryId != null) {
+        filteredItems = filteredItems
+            .where((item) => item.categoryId == categoryId)
+            .toList();
+      }
 
-  // Apply category filter
-  if (categoryId != null) {
-    filteredItems = filteredItems
-        .where((item) => item.categoryId == categoryId)
-        .toList();
-  }
+      // Apply search filter (case-insensitive)
+      if (searchQuery.isNotEmpty) {
+        final query = searchQuery.toLowerCase();
+        filteredItems = filteredItems
+            .where((item) => item.name.toLowerCase().contains(query))
+            .toList();
+      }
 
-  // Apply search filter (case-insensitive)
-  if (searchQuery.isNotEmpty) {
-    final query = searchQuery.toLowerCase();
-    filteredItems = filteredItems
-        .where((item) => item.name.toLowerCase().contains(query))
-        .toList();
-  }
-
-  return filteredItems;
+      return filteredItems;
+    },
+    loading: () => [],
+    error: (_, __) => [],
+  );
 });
 
 /// Provider to check if any filter is active

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../data/providers/payment_provider.dart';
+import '../../data/providers/transaction_provider.dart';
+import '../screens/transaction_success_screen.dart';
 import 'quick_amount_chip.dart';
 
 class CashPaymentSection extends ConsumerStatefulWidget {
@@ -17,6 +20,7 @@ class CashPaymentSection extends ConsumerStatefulWidget {
 
 class _CashPaymentSectionState extends ConsumerState<CashPaymentSection> {
   final _cashController = TextEditingController();
+  bool _isProcessing = false;
 
   @override
   void dispose() {
@@ -177,23 +181,62 @@ class _CashPaymentSectionState extends ConsumerState<CashPaymentSection> {
 
   Widget _buildCompleteButton(bool isSufficient) {
     return FilledButton(
-      onPressed: isSufficient ? _handleComplete : null,
+      onPressed: (isSufficient && !_isProcessing) ? _handleComplete : null,
       style: FilledButton.styleFrom(
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
         backgroundColor: isSufficient ? AppColors.primary : null,
       ),
-      child: const Text('Selesai'),
+      child: _isProcessing
+          ? const SizedBox(
+              height: 20,
+              width: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            )
+          : const Text('Selesai'),
     );
   }
 
-  void _handleComplete() {
-    // TODO: Story 4.5 - Complete transaction & update stock
-    // For now, just show a placeholder message
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.showSnackBar(
-      const SnackBar(
-        content: Text('Pembayaran akan diproses di Story 4.5'),
-      ),
-    );
+  Future<void> _handleComplete() async {
+    // Set processing state
+    setState(() {
+      _isProcessing = true;
+    });
+
+    try {
+      // Complete transaction via provider
+      final transaction = await ref
+          .read(transactionNotifierProvider.notifier)
+          .completeTransaction();
+
+      // Navigate to success screen if still mounted
+      if (mounted) {
+        // Pop the payment bottom sheet first
+        Navigator.of(context).pop();
+
+        // Navigate to success screen using GoRouter instead of Navigator.push
+        // to maintain proper route stack management
+        context.push('/transaction-success', extra: transaction);
+      }
+    } catch (e) {
+      // Show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      // Reset processing state if still mounted
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
+      }
+    }
   }
 }

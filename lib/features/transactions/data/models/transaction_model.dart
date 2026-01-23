@@ -6,11 +6,7 @@ class TransactionAdmin {
   final String? name;
   final String email;
 
-  const TransactionAdmin({
-    required this.id,
-    this.name,
-    required this.email,
-  });
+  const TransactionAdmin({required this.id, this.name, required this.email});
 
   factory TransactionAdmin.fromJson(Map<String, dynamic> json) {
     return TransactionAdmin(
@@ -22,11 +18,7 @@ class TransactionAdmin {
 
   /// Convert to JSON for serialization
   Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'email': email,
-    };
+    return {'id': id, 'name': name, 'email': email};
   }
 
   /// Get display name (name or email prefix)
@@ -124,7 +116,7 @@ class Transaction {
   final int? changeAmount;
   final int total;
   final DateTime createdAt;
-  
+
   // Related data (loaded separately)
   final TransactionAdmin? admin;
   final List<TransactionItem> items;
@@ -151,7 +143,8 @@ class Transaction {
 
     // Parse transaction items if included
     List<TransactionItem> items = [];
-    if (json['transaction_items'] != null && json['transaction_items'] is List) {
+    if (json['transaction_items'] != null &&
+        json['transaction_items'] is List) {
       items = (json['transaction_items'] as List)
           .map((item) => TransactionItem.fromJson(item as Map<String, dynamic>))
           .toList();
@@ -191,6 +184,16 @@ class Transaction {
 
   /// Check if this is a QRIS transaction
   bool get isQris => paymentMethod == 'qris';
+
+  /// Get formatted cash received
+  String get formattedCashReceived {
+    final formatter = NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: 'Rp ',
+      decimalDigits: 0,
+    );
+    return formatter.format(cashReceived ?? 0);
+  }
 
   /// Get formatted total price
   String get formattedTotal {
@@ -263,12 +266,15 @@ class Transaction {
   }
 
   @override
-  String toString() => 'Transaction(code: $code, total: $total, admin: $adminName)';
+  String toString() =>
+      'Transaction(code: $code, total: $total, admin: $adminName)';
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is Transaction && runtimeType == other.runtimeType && id == other.id;
+      other is Transaction &&
+          runtimeType == other.runtimeType &&
+          id == other.id;
 
   @override
   int get hashCode => id.hashCode;

@@ -1,20 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../data/providers/payment_provider.dart';
+import '../../data/providers/transaction_provider.dart';
+import '../screens/transaction_success_screen.dart';
 
 /// QRIS Payment section for POS (Story 4.4)
 ///
 /// MVP implementation with manual payment confirmation.
 /// Future: Integrate with Duitku/Tripay for real QRIS generation.
-class QrisPaymentSection extends ConsumerWidget {
+class QrisPaymentSection extends ConsumerStatefulWidget {
   const QrisPaymentSection({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<QrisPaymentSection> createState() =>
+      _QrisPaymentSectionState();
+}
+
+class _QrisPaymentSectionState extends ConsumerState<QrisPaymentSection> {
+  bool _isProcessing = false;
+
+  @override
+  Widget build(BuildContext context) {
     final paymentState = ref.watch(paymentNotifierProvider);
     final totalAmount = paymentState.totalAmount;
 
@@ -34,7 +45,7 @@ class QrisPaymentSection extends ConsumerWidget {
           const SizedBox(height: AppSpacing.xl),
 
           // Confirmation button
-          _buildConfirmButton(context),
+          _buildConfirmButton(),
         ],
       ),
     );
@@ -103,31 +114,69 @@ class QrisPaymentSection extends ConsumerWidget {
     );
   }
 
-  Widget _buildConfirmButton(BuildContext context) {
+  Widget _buildConfirmButton() {
     return FilledButton(
-      onPressed: () => _handleConfirm(context),
+      onPressed: !_isProcessing ? _handleConfirm : null,
       style: FilledButton.styleFrom(
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
         backgroundColor: AppColors.success,
       ),
-      child: const Text(
-        'Pembayaran Diterima',
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
+      child: _isProcessing
+          ? const SizedBox(
+              height: 20,
+              width: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            )
+          : const Text(
+              'Pembayaran Diterima',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
     );
   }
 
-  void _handleConfirm(BuildContext context) {
-    // TODO: Story 4.5 - Complete transaction & update stock
-    // For now, just show a placeholder message
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.showSnackBar(
-      const SnackBar(
-        content: Text('Pembayaran berhasil dikonfirmasi'),
-      ),
-    );
+  Future<void> _handleConfirm() async {
+    // Set processing state
+    setState(() {
+      _isProcessing = true;
+    });
+
+    try {
+      // Complete transaction via provider
+      final transaction = await ref
+          .read(transactionNotifierProvider.notifier)
+          .completeTransaction();
+
+      // Navigate to success screen if still mounted
+      if (mounted) {
+        // Pop the payment bottom sheet first
+        Navigator.of(context).pop();
+
+        // Navigate to success screen using GoRouter
+        context.push('/transaction-success', extra: transaction);
+      }
+    } catch (e) {
+      // Show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      // Reset processing state if still mounted
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
+      }
+    }
   }
 }

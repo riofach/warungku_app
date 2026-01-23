@@ -6,3 +6,4 @@ export 'payment_provider.dart';
 export 'pos_category_filter_provider.dart';
 export 'pos_items_provider.dart';
 export 'pos_search_provider.dart';
+export 'transaction_provider.dart';

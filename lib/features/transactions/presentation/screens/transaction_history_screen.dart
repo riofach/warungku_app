@@ -132,9 +132,9 @@ class _DateHeader extends StatelessWidget {
       child: Text(
         date,
         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: AppColors.textSecondary,
-            ),
+          fontWeight: FontWeight.bold,
+          color: AppColors.textSecondary,
+        ),
       ),
     );
   }
@@ -165,14 +165,14 @@ class _TransactionCard extends StatelessWidget {
                   Text(
                     transaction.code,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   _PaymentMethodBadge(method: transaction.paymentMethod),
                 ],
               ),
               const SizedBox(height: AppSpacing.sm),
-              
+
               // Total and time row
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -180,28 +180,30 @@ class _TransactionCard extends StatelessWidget {
                   Text(
                     transaction.formattedTotal,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
-                        ),
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
+                    ),
                   ),
                   Text(
                     transaction.shortDate,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ],
               ),
-              
+
               const Divider(height: AppSpacing.lg),
-              
+
               // Admin info row (FR5: Track Transactions by Admin)
               Row(
                 children: [
                   // Admin avatar
                   CircleAvatar(
                     radius: 14,
-                    backgroundColor: AppColors.primaryLight.withValues(alpha: 0.3),
+                    backgroundColor: AppColors.primaryLight.withValues(
+                      alpha: 0.3,
+                    ),
                     child: Text(
                       transaction.admin?.initials ?? '?',
                       style: const TextStyle(
@@ -219,15 +221,13 @@ class _TransactionCard extends StatelessWidget {
                       children: [
                         Text(
                           'Diproses oleh',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: AppColors.textTertiary,
-                              ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: AppColors.textTertiary),
                         ),
                         Text(
                           transaction.adminName,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.w500,
-                              ),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(fontWeight: FontWeight.w500),
                         ),
                       ],
                     ),
@@ -245,8 +245,8 @@ class _TransactionCard extends StatelessWidget {
                     child: Text(
                       '${transaction.itemCount} item',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ),
                 ],
@@ -308,9 +308,9 @@ class _PaymentMethodBadge extends StatelessWidget {
           Text(
             isQris ? 'QRIS' : 'Tunai',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: isQris ? AppColors.primary : AppColors.secondary,
-                  fontWeight: FontWeight.w600,
-                ),
+              color: isQris ? AppColors.primary : AppColors.secondary,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -359,14 +359,14 @@ class _TransactionDetailSheet extends StatelessWidget {
                     Text(
                       'Detail Transaksi',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     Text(
                       transaction.code,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -396,7 +396,7 @@ class _TransactionDetailSheet extends StatelessWidget {
                   _DetailRow(
                     icon: Icons.payments_outlined,
                     label: 'Uang diterima',
-                    value: 'Rp ${transaction.cashReceived ?? 0}',
+                    value: transaction.formattedCashReceived,
                   ),
                   _DetailRow(
                     icon: Icons.change_circle_outlined,
@@ -408,17 +408,17 @@ class _TransactionDetailSheet extends StatelessWidget {
                 // Items
                 Text(
                   'Item',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 if (transaction.items.isEmpty)
                   Text(
                     'Detail item tidak tersedia',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
+                      color: AppColors.textSecondary,
+                    ),
                   )
                 else
                   ...transaction.items.map((item) => _ItemRow(item: item)),
@@ -430,15 +430,15 @@ class _TransactionDetailSheet extends StatelessWidget {
                     Text(
                       'Total',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     Text(
                       transaction.formattedTotal,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primary,
-                          ),
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
                     ),
                   ],
                 ),
@@ -473,16 +473,16 @@ class _DetailRow extends StatelessWidget {
           const SizedBox(width: AppSpacing.sm),
           Text(
             label,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.textSecondary,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
           ),
           const Spacer(),
           Text(
             value,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
           ),
         ],
       ),
@@ -522,17 +522,17 @@ class _ItemRow extends StatelessWidget {
                 Text(
                   '${item.quantity} x ${_formatCurrency(item.sellPrice)}',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ],
             ),
           ),
           Text(
             _formatCurrency(item.subtotal),
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
           ),
         ],
       ),
@@ -559,9 +559,9 @@ class _FilterBottomSheet extends ConsumerWidget {
             children: [
               Text(
                 'Filter Transaksi',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
               TextButton(
                 onPressed: () {
@@ -576,9 +576,9 @@ class _FilterBottomSheet extends ConsumerWidget {
           const SizedBox(height: AppSpacing.md),
           Text(
             'Periode',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: AppSpacing.sm),
           Wrap(
@@ -603,7 +603,9 @@ class _FilterBottomSheet extends ConsumerWidget {
                 label: 'Semua',
                 selected: filter.fromDate == null && filter.toDate == null,
                 onSelected: () {
-                  ref.read(transactionFilterProvider.notifier).setDateRange(null, null);
+                  ref
+                      .read(transactionFilterProvider.notifier)
+                      .setDateRange(null, null);
                   ref.invalidate(transactionsProvider);
                   Navigator.pop(context);
                 },
@@ -620,7 +622,11 @@ class _FilterBottomSheet extends ConsumerWidget {
     if (filter.fromDate == null) return false;
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final filterDate = DateTime(filter.fromDate!.year, filter.fromDate!.month, filter.fromDate!.day);
+    final filterDate = DateTime(
+      filter.fromDate!.year,
+      filter.fromDate!.month,
+      filter.fromDate!.day,
+    );
     return filterDate == today;
   }
 
@@ -628,15 +634,24 @@ class _FilterBottomSheet extends ConsumerWidget {
     if (filter.fromDate == null) return false;
     final now = DateTime.now();
     final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
-    final filterDate = DateTime(filter.fromDate!.year, filter.fromDate!.month, filter.fromDate!.day);
-    return filterDate == DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
+    final filterDate = DateTime(
+      filter.fromDate!.year,
+      filter.fromDate!.month,
+      filter.fromDate!.day,
+    );
+    return filterDate ==
+        DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
   }
 
   bool _isThisMonthSelected(TransactionFilterState filter) {
     if (filter.fromDate == null) return false;
     final now = DateTime.now();
     final startOfMonth = DateTime(now.year, now.month, 1);
-    final filterDate = DateTime(filter.fromDate!.year, filter.fromDate!.month, filter.fromDate!.day);
+    final filterDate = DateTime(
+      filter.fromDate!.year,
+      filter.fromDate!.month,
+      filter.fromDate!.day,
+    );
     return filterDate == startOfMonth;
   }
 
@@ -652,9 +667,15 @@ class _FilterBottomSheet extends ConsumerWidget {
   void _selectThisWeek(WidgetRef ref, BuildContext context) {
     final now = DateTime.now();
     final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
-    final startDate = DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
+    final startDate = DateTime(
+      startOfWeek.year,
+      startOfWeek.month,
+      startOfWeek.day,
+    );
     final endDate = startDate.add(const Duration(days: 7));
-    ref.read(transactionFilterProvider.notifier).setDateRange(startDate, endDate);
+    ref
+        .read(transactionFilterProvider.notifier)
+        .setDateRange(startDate, endDate);
     ref.invalidate(transactionsProvider);
     Navigator.pop(context);
   }
@@ -663,7 +684,9 @@ class _FilterBottomSheet extends ConsumerWidget {
     final now = DateTime.now();
     final startOfMonth = DateTime(now.year, now.month, 1);
     final endOfMonth = DateTime(now.year, now.month + 1, 1);
-    ref.read(transactionFilterProvider.notifier).setDateRange(startOfMonth, endOfMonth);
+    ref
+        .read(transactionFilterProvider.notifier)
+        .setDateRange(startOfMonth, endOfMonth);
     ref.invalidate(transactionsProvider);
     Navigator.pop(context);
   }

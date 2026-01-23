@@ -14,6 +14,8 @@ import '../../features/inventory/data/models/item_model.dart';
 import '../../features/reports/presentation/screens/reports_screen.dart';
 import '../../features/admin_management/presentation/screens/admin_list_screen.dart';
 import '../../features/transactions/presentation/screens/transaction_history_screen.dart';
+import '../../features/pos/presentation/screens/transaction_success_screen.dart';
+import '../../features/pos/data/models/transaction_model.dart';
 import '../services/supabase_service.dart';
 import '../widgets/main_scaffold.dart';
 
@@ -34,6 +36,7 @@ class AppRoutes {
   static const String reports = '/reports';
   static const String adminManagement = '/admin-management';
   static const String transactionHistory = '/transaction-history';
+  static const String transactionSuccess = '/transaction-success';
 }
 
 /// Router provider
@@ -141,6 +144,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.transactionHistory,
         builder: (context, state) => const TransactionHistoryScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.transactionSuccess,
+        builder: (context, state) {
+          final transaction = state.extra as Transaction;
+          return TransactionSuccessScreen(transaction: transaction);
+        },
       ),
     ],
   );

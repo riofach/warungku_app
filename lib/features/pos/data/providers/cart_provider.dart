@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../inventory/data/models/item_model.dart';
 import '../models/cart_item.dart';
+import 'cart_error_provider.dart';
 
 /// State for cart
 class CartState {
@@ -80,6 +81,8 @@ class CartNotifier extends Notifier<CartState> {
 
       // Check stock limit
       if (newQuantity > item.stock) {
+        ref.read(cartErrorProvider.notifier).setError(
+            'Stok ${item.name} tidak mencukupi (sisa: ${item.stock})');
         return; // Cannot add more than available stock
       }
 
@@ -88,6 +91,8 @@ class CartNotifier extends Notifier<CartState> {
     } else {
       // New item, add to cart
       if (quantity > item.stock) {
+        ref.read(cartErrorProvider.notifier).setError(
+            'Stok ${item.name} tidak mencukupi (sisa: ${item.stock})');
         quantity = item.stock; // Cap at available stock
       }
       if (quantity > 0) {
@@ -114,6 +119,12 @@ class CartNotifier extends Notifier<CartState> {
         final updatedItems = [...state.items];
         final existingItem = updatedItems[index];
         final maxQuantity = existingItem.item.stock;
+        
+        if (quantity > maxQuantity) {
+             ref.read(cartErrorProvider.notifier).setError(
+                'Stok ${existingItem.item.name} tidak mencukupi (sisa: $maxQuantity)');
+        }
+
         final newQuantity = quantity > maxQuantity ? maxQuantity : quantity;
 
         updatedItems[index] = existingItem.copyWith(quantity: newQuantity);
@@ -129,6 +140,9 @@ class CartNotifier extends Notifier<CartState> {
       // Check stock limit before incrementing
       if (cartItem.quantity < cartItem.item.stock) {
         updateQuantity(itemId, cartItem.quantity + 1);
+      } else {
+         ref.read(cartErrorProvider.notifier).setError(
+            'Stok ${cartItem.item.name} tidak mencukupi (sisa: ${cartItem.item.stock})');
       }
     }
   }

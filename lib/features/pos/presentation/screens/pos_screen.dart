@@ -15,8 +15,10 @@ import '../../data/providers/pos_search_provider.dart';
 import '../../data/providers/pos_category_filter_provider.dart';
 import '../../data/providers/filtered_pos_items_provider.dart';
 import '../../data/providers/cart_provider.dart';
+import '../../data/providers/cart_error_provider.dart';
 import '../widgets/pos_product_card.dart';
 import '../widgets/cart_summary_bar.dart';
+import '../widgets/cart_bottom_sheet.dart';
 
 /// POS (Point of Sale) screen - kasir interface
 /// Displays product grid with search, category filter, and cart summary
@@ -63,6 +65,23 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     ref.read(posCategoryFilterProvider.notifier).state = categoryId;
   }
 
+  void _showCartBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.4,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (context, scrollController) => CartBottomSheet(
+          scrollController: scrollController,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final itemsAsync = ref.watch(posItemsNotifierProvider);
@@ -71,6 +90,29 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     final searchQuery = ref.watch(posSearchQueryProvider);
     final selectedCategory = ref.watch(posCategoryFilterProvider);
     final cartIsEmpty = ref.watch(cartIsEmptyProvider);
+
+    // Listen for cart errors and show SnackBar
+    ref.listen<String?>(cartErrorProvider, (previous, next) {
+      if (next != null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next),
+            backgroundColor: AppColors.error,
+            duration: const Duration(seconds: 2),
+            action: SnackBarAction(
+              label: 'OK',
+              textColor: Colors.white,
+              onPressed: () {
+                ref.read(cartErrorProvider.notifier).setError(null);
+              },
+            ),
+          ),
+        );
+        // Clear error immediately after showing
+        ref.read(cartErrorProvider.notifier).setError(null);
+      }
+    });
 
     return Scaffold(
       appBar: AppBar(
@@ -95,7 +137,11 @@ class _PosScreenState extends ConsumerState<PosScreen> {
       bottomNavigationBar: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         height: cartIsEmpty ? 0 : 70,
-        child: cartIsEmpty ? null : const CartSummaryBar(),
+        child: cartIsEmpty 
+            ? null 
+            : CartSummaryBar(
+                onTap: () => _showCartBottomSheet(context),
+              ),
       ),
     );
   }
@@ -213,7 +259,12 @@ class _PosScreenState extends ConsumerState<PosScreen> {
             itemCount: filteredItems.length,
             itemBuilder: (context, index) {
               final item = filteredItems[index];
-              return PosProductCard(item: item);
+              return PosProductCard(
+                item: item,
+                onAddToCart: () {
+                    // Feedback handled by listener above, but we can add success feedback here if needed
+                },
+              );
             },
           ),
         );

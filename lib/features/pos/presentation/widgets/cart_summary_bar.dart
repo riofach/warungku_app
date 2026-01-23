@@ -84,9 +84,9 @@ class CartSummaryBar extends ConsumerWidget {
               const SizedBox(width: AppSpacing.sm),
               // Arrow icon
               const Icon(
-                Icons.arrow_forward_ios,
+                Icons.keyboard_arrow_up,
                 color: Colors.white,
-                size: 16,
+                size: 20,
               ),
             ],
           ),

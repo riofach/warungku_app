@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/formatters.dart';
-import '../../data/providers/cart_provider.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
+import '../../data/providers/cart_provider.dart';
 import 'cart_item_tile.dart';
+import 'payment_bottom_sheet.dart';
 
 /// Cart Bottom Sheet
 /// Displays list of items in cart with quantity controls and total price
@@ -145,11 +146,8 @@ class CartBottomSheet extends ConsumerWidget {
             const SizedBox(height: AppSpacing.md),
             SizedBox(
               width: double.infinity,
-              child:               FilledButton(
-                onPressed: () {
-                  // TODO: Navigate to payment screen
-                  // context.pushNamed(AppRouter.payment);
-                },
+              child: FilledButton(
+                onPressed: () => _handlePayment(context),
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
                 ),
@@ -158,6 +156,25 @@ class CartBottomSheet extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _handlePayment(BuildContext context) {
+    // Close cart sheet first
+    final navigator = Navigator.of(context);
+    navigator.pop();
+
+    // Show payment bottom sheet
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (context, scrollController) => const PaymentBottomSheet(),
       ),
     );
   }

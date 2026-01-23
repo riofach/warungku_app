@@ -10,6 +10,8 @@ import '../../data/providers/transaction_provider.dart';
 import '../screens/transaction_success_screen.dart';
 import 'quick_amount_chip.dart';
 
+import 'transaction_handler_mixin.dart';
+
 class CashPaymentSection extends ConsumerStatefulWidget {
   const CashPaymentSection({super.key});
 
@@ -18,9 +20,8 @@ class CashPaymentSection extends ConsumerStatefulWidget {
       _CashPaymentSectionState();
 }
 
-class _CashPaymentSectionState extends ConsumerState<CashPaymentSection> {
+class _CashPaymentSectionState extends ConsumerState<CashPaymentSection> with TransactionHandlerMixin {
   final _cashController = TextEditingController();
-  bool _isProcessing = false;
 
   @override
   void dispose() {
@@ -181,12 +182,12 @@ class _CashPaymentSectionState extends ConsumerState<CashPaymentSection> {
 
   Widget _buildCompleteButton(bool isSufficient) {
     return FilledButton(
-      onPressed: (isSufficient && !_isProcessing) ? _handleComplete : null,
+      onPressed: (isSufficient && !isProcessing) ? _handleComplete : null,
       style: FilledButton.styleFrom(
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
         backgroundColor: isSufficient ? AppColors.primary : null,
       ),
-      child: _isProcessing
+      child: isProcessing
           ? const SizedBox(
               height: 20,
               width: 20,
@@ -200,43 +201,6 @@ class _CashPaymentSectionState extends ConsumerState<CashPaymentSection> {
   }
 
   Future<void> _handleComplete() async {
-    // Set processing state
-    setState(() {
-      _isProcessing = true;
-    });
-
-    try {
-      // Complete transaction via provider
-      final transaction = await ref
-          .read(transactionNotifierProvider.notifier)
-          .completeTransaction();
-
-      // Navigate to success screen if still mounted
-      if (mounted) {
-        // Pop the payment bottom sheet first
-        Navigator.of(context).pop();
-
-        // Navigate to success screen using GoRouter instead of Navigator.push
-        // to maintain proper route stack management
-        context.push('/transaction-success', extra: transaction);
-      }
-    } catch (e) {
-      // Show error message
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceAll('Exception: ', '')),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
-    } finally {
-      // Reset processing state if still mounted
-      if (mounted) {
-        setState(() {
-          _isProcessing = false;
-        });
-      }
-    }
+    await handleTransaction(ref, context, () async {});
   }
 }

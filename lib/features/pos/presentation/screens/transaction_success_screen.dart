@@ -230,9 +230,7 @@ class TransactionSuccessScreen extends ConsumerWidget {
   }
 
   void _handleNewTransaction(BuildContext context) {
-    // Navigate back to POS screen
-    // Using pushReplacementNamed or pop until the root to ensure we don't just add to stack
-    // Since we used Navigator.push for this screen, we should use context.go to reset stack via GoRouter
+    // Navigate back to POS screen and clear history
     context.go('/pos');
   }
 }

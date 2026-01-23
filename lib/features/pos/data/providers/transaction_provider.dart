@@ -75,7 +75,8 @@ class TransactionNotifier extends Notifier<AsyncValue<Transaction?>> {
       return transaction;
     } catch (e, st) {
       // Update state to error
-      state = AsyncValue.error(e, st);
+      final errorMessage = e.toString().replaceAll('Exception: ', '');
+      state = AsyncValue.error(errorMessage, st);
       rethrow; // Re-throw for UI to handle
     }
   }

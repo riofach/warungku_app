@@ -64,10 +64,11 @@ class TransactionRepository {
       return Transaction.fromJson(response as Map<String, dynamic>);
     } on PostgrestException catch (e) {
       // Database error (e.g., stock insufficient, constraint violation)
-      throw Exception('Gagal menyimpan transaksi: ${e.message}');
+      // Pass the specific error message from PostgreSQL RAISE EXCEPTION
+      throw e.message;
     } catch (e) {
       // General error (network, parsing, etc.)
-      throw Exception('Terjadi kesalahan. Silakan coba lagi.');
+      throw 'Terjadi kesalahan. Silakan coba lagi.';
     }
   }
 }

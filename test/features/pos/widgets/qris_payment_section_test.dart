@@ -100,7 +100,7 @@ void main() {
       // Should show placeholder SnackBar (Story 4.5 will complete this)
       expect(find.byType(SnackBar), findsOneWidget);
       expect(
-        find.text('Pembayaran akan diproses di Story 4.5'),
+        find.text('Pembayaran berhasil dikonfirmasi'),
         findsOneWidget,
       );
     });

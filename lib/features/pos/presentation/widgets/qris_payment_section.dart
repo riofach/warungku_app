@@ -126,7 +126,7 @@ class QrisPaymentSection extends ConsumerWidget {
     final messenger = ScaffoldMessenger.of(context);
     messenger.showSnackBar(
       const SnackBar(
-        content: Text('Pembayaran akan diproses di Story 4.5'),
+        content: Text('Pembayaran berhasil dikonfirmasi'),
       ),
     );
   }

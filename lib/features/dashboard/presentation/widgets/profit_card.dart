@@ -4,7 +4,14 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/formatters.dart';
 
-class ProfitCard extends StatefulWidget {
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/utils/formatters.dart';
+import '../../data/providers/dashboard_provider.dart';
+
+class ProfitCard extends ConsumerWidget {
   final int profit;
 
   const ProfitCard({
@@ -13,14 +20,9 @@ class ProfitCard extends StatefulWidget {
   });
 
   @override
-  State<ProfitCard> createState() => _ProfitCardState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isVisible = ref.watch(profitVisibilityProvider);
 
-class _ProfitCardState extends State<ProfitCard> {
-  bool _isVisible = true;
-
-  @override
-  Widget build(BuildContext context) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.md),
@@ -37,10 +39,12 @@ class _ProfitCardState extends State<ProfitCard> {
                 ),
                 IconButton(
                   icon: Icon(
-                    _isVisible ? Icons.visibility : Icons.visibility_off,
+                    isVisible ? Icons.visibility : Icons.visibility_off,
                     size: 20,
                   ),
-                  onPressed: () => setState(() => _isVisible = !_isVisible),
+                  onPressed: () => ref
+                      .read(profitVisibilityProvider.notifier)
+                      .update((state) => !state),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                 ),
@@ -55,10 +59,10 @@ class _ProfitCardState extends State<ProfitCard> {
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(
-              _isVisible ? Formatters.formatRupiah(widget.profit) : 'Rp •••••••',
+              isVisible ? Formatters.formatRupiah(profit) : 'Rp •••••••',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: _isVisible ? null : AppColors.textSecondary,
+                    color: isVisible ? null : AppColors.textSecondary,
                   ),
             ),
           ],

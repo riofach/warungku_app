@@ -1,4 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+// ignore: deprecated_member_use
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/dashboard_summary.dart';
@@ -14,6 +16,11 @@ final dashboardProvider =
     AsyncNotifierProvider<DashboardNotifier, DashboardSummary>(
   DashboardNotifier.new,
 );
+
+// Provider for profit visibility state (persists during session)
+final profitVisibilityProvider = StateProvider<bool>((ref) {
+  return true;
+});
 
 class DashboardNotifier extends AsyncNotifier<DashboardSummary> {
   @override

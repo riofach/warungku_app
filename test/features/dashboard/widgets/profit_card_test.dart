@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:warungku_app/features/dashboard/presentation/widgets/profit_card.dart';
 
@@ -10,9 +11,11 @@ void main() {
 
       // Act
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: ProfitCard(profit: profit),
+        const ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: ProfitCard(profit: profit),
+            ),
           ),
         ),
       );
@@ -30,9 +33,11 @@ void main() {
       const profit = 250000;
 
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: ProfitCard(profit: profit),
+        const ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: ProfitCard(profit: profit),
+            ),
           ),
         ),
       );
@@ -66,9 +71,11 @@ void main() {
 
       // Act
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: ProfitCard(profit: profit),
+        const ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: ProfitCard(profit: profit),
+            ),
           ),
         ),
       );
@@ -83,9 +90,11 @@ void main() {
       const profit = 10000000; // 10 million
 
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: ProfitCard(profit: profit),
+        const ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: ProfitCard(profit: profit),
+            ),
           ),
         ),
       );

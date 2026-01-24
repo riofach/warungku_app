@@ -7,11 +7,14 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../inventory/data/providers/item_form_provider.dart';
 import '../../data/providers/dashboard_provider.dart';
 import '../../data/providers/low_stock_provider.dart';
+import '../../data/providers/new_orders_provider.dart';
 import '../widgets/greeting_header.dart';
 import '../widgets/low_stock_alert.dart';
+import '../widgets/new_orders_section.dart';
 import '../widgets/omset_card.dart';
 import '../widgets/profit_card.dart';
 import '../widgets/transaction_count_card.dart';
+import '../../../orders/data/models/order_model.dart';
 
 /// Dashboard screen - main home screen for admin
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -29,12 +32,67 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshData();
     });
+    
+    // Set notification callback
+    NewOrdersNotifier.onNewOrderReceived = _handleNewOrderNotification;
+  }
+  
+  @override
+  void dispose() {
+    // Clean up notification callback
+    if (NewOrdersNotifier.onNewOrderReceived == _handleNewOrderNotification) {
+      NewOrdersNotifier.onNewOrderReceived = null;
+    }
+    super.dispose();
+  }
+  
+  void _handleNewOrderNotification(Order order) {
+    if (!mounted) return;
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.notifications_active, color: Colors.white),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Pesanan Baru Diterima!',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    '${order.customerName} - ${order.total} (Belum dibayar)',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: AppColors.primary,
+        duration: const Duration(seconds: 4),
+        action: SnackBarAction(
+          label: 'LIHAT',
+          textColor: Colors.white,
+          onPressed: () {
+            // Navigate to orders screen or show detail
+            // context.push('/orders');
+          },
+        ),
+      ),
+    );
   }
 
   /// Refresh dashboard and low stock data
   void _refreshData() {
     ref.invalidate(dashboardProvider);
     ref.invalidate(lowStockProvider);
+    ref.invalidate(newOrdersProvider);
   }
 
   @override
@@ -67,6 +125,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           await Future.wait([
             ref.read(dashboardProvider.notifier).refresh(),
             ref.read(lowStockProvider.notifier).refresh(),
+            ref.read(newOrdersProvider.notifier).refresh(),
           ]);
         },
         child: SingleChildScrollView(
@@ -97,6 +156,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 loading: () => _buildShimmerCards(),
                 error: (error, _) => _buildErrorWidget(error),
               ),
+              const SizedBox(height: AppSpacing.lg),
+
+              // New Orders Section (Story 5.3)
+              const NewOrdersSection(),
               const SizedBox(height: AppSpacing.lg),
 
               // Low Stock Alert Section (Story 5.2)

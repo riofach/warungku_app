@@ -89,6 +89,11 @@ class Formatters {
   }
 }
 
+/// Global convenience functions
+String formatRupiah(int amount) => Formatters.formatRupiah(amount);
+String formatDate(DateTime date) => Formatters.formatDate(date);
+String formatDateTime(DateTime date) => Formatters.formatDateTime(date);
+
 /// Rupiah input formatter for price fields
 /// Converts input to formatted Rupiah: 3500 -> 3.500
 /// Use with TextFormField inputFormatters

@@ -36,8 +36,11 @@ class _PosScreenState extends ConsumerState<PosScreen> {
   @override
   void initState() {
     super.initState();
-    // Load categories on init (items loaded by AsyncValue automatically)
+    // Auto-refresh data when screen is entered
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Refresh items (product grid)
+      ref.invalidate(posItemsNotifierProvider);
+      // Refresh categories
       ref.read(categoryListNotifierProvider.notifier).loadCategories();
     });
   }
@@ -245,7 +248,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
         // Product grid
         return RefreshIndicator(
           onRefresh: () async {
-            await ref.refresh(posItemsNotifierProvider.future);
+            ref.invalidate(posItemsNotifierProvider);
             await ref.read(categoryListNotifierProvider.notifier).refresh();
           },
           child: GridView.builder(

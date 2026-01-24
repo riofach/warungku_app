@@ -11,11 +11,25 @@ import '../widgets/profit_card.dart';
 import '../widgets/transaction_count_card.dart';
 
 /// Dashboard screen - main home screen for admin
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Auto-refresh dashboard data when screen is entered
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.invalidate(dashboardProvider);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final dashboardAsync = ref.watch(dashboardProvider);
     final user = Supabase.instance.client.auth.currentUser;
     final displayName =
@@ -53,7 +67,7 @@ class DashboardScreen extends ConsumerWidget {
                   ],
                 ),
                 loading: () => _buildShimmerCards(),
-                error: (error, _) => _buildErrorWidget(error, ref),
+                error: (error, _) => _buildErrorWidget(error),
               ),
               const SizedBox(height: AppSpacing.lg),
 
@@ -101,7 +115,7 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildErrorWidget(Object error, WidgetRef ref) {
+  Widget _buildErrorWidget(Object error) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.lg),

@@ -102,14 +102,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Logo
-                  Icon(
-                    Icons.storefront,
-                    size: 80,
-                    color: AppColors.primary,
+                  Image.asset(
+                    'assets/images/logo-warung.png',
+                    height: 120,
                   ),
                   const SizedBox(height: AppSpacing.md),
                   Text(
-                    'WarungKu',
+                    'Warung Luthfan',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                           fontWeight: FontWeight.bold,

@@ -1,82 +1,122 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../data/providers/dashboard_provider.dart';
+import '../widgets/greeting_header.dart';
+import '../widgets/omset_card.dart';
+import '../widgets/profit_card.dart';
+import '../widgets/transaction_count_card.dart';
 
 /// Dashboard screen - main home screen for admin
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final dashboardAsync = ref.watch(dashboardProvider);
+    final user = Supabase.instance.client.auth.currentUser;
+    final displayName =
+        user?.userMetadata?['display_name'] ?? user?.userMetadata?['name'] ?? 'Admin';
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Dashboard'),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSpacing.screenPadding),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Welcome header
-            Text(
-              'Halo, Admin! 👋',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              'Selamat datang di WarungKu',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
+      body: RefreshIndicator(
+        onRefresh: () => ref.read(dashboardProvider.notifier).refresh(),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(AppSpacing.screenPadding),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Greeting header
+              GreetingHeader(name: displayName),
+              const SizedBox(height: AppSpacing.lg),
 
-            // Summary cards placeholder
-            Row(
-              children: [
-                Expanded(
-                  child: _SummaryCard(
-                    title: 'Omset Hari Ini',
-                    value: 'Rp 0',
-                    icon: Icons.monetization_on_outlined,
-                    color: AppColors.primary,
-                  ),
+              // Summary cards
+              dashboardAsync.when(
+                data: (summary) => Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(child: OmsetCard(omset: summary.omset)),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(child: ProfitCard(profit: summary.profit)),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    TransactionCountCard(count: summary.transactionCount),
+                  ],
                 ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: _SummaryCard(
-                    title: 'Transaksi',
-                    value: '0',
-                    icon: Icons.receipt_outlined,
-                    color: AppColors.secondary,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.lg),
+                loading: () => _buildShimmerCards(),
+                error: (error, _) => _buildErrorWidget(error, ref),
+              ),
+              const SizedBox(height: AppSpacing.lg),
 
-            // Placeholder sections
-            Text(
-              'Stok Menipis',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                child: Center(
-                  child: Text(
-                    '✅ Semua stok aman!',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
+              // Placeholder sections (Story 5.2)
+              Text(
+                'Stok Menipis',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: Center(
+                    child: Text(
+                      '✅ Semua stok aman!',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                    ),
                   ),
                 ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShimmerCards() {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(child: _ShimmerCard()),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(child: _ShimmerCard()),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        _ShimmerCard(),
+      ],
+    );
+  }
+
+  Widget _buildErrorWidget(Object error, WidgetRef ref) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          children: [
+            const Icon(
+              Icons.error_outline,
+              color: AppColors.error,
+              size: 48,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              'Gagal memuat data. Tarik ke bawah untuk coba lagi.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.textSecondary),
             ),
           ],
         ),
@@ -85,19 +125,7 @@ class DashboardScreen extends StatelessWidget {
   }
 }
 
-class _SummaryCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final IconData icon;
-  final Color color;
-
-  const _SummaryCard({
-    required this.title,
-    required this.value,
-    required this.icon,
-    required this.color,
-  });
-
+class _ShimmerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -106,20 +134,31 @@ class _SummaryCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: color, size: 28),
+            Container(
+              height: 28,
+              width: 28,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
             const SizedBox(height: AppSpacing.sm),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
+            Container(
+              height: 14,
+              width: 100,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
             const SizedBox(height: AppSpacing.xs),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+            Container(
+              height: 20,
+              width: 120,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
           ],
         ),

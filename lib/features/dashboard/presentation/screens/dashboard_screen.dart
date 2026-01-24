@@ -4,8 +4,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../inventory/data/providers/item_form_provider.dart';
 import '../../data/providers/dashboard_provider.dart';
+import '../../data/providers/low_stock_provider.dart';
 import '../widgets/greeting_header.dart';
+import '../widgets/low_stock_alert.dart';
 import '../widgets/omset_card.dart';
 import '../widgets/profit_card.dart';
 import '../widgets/transaction_count_card.dart';
@@ -22,10 +25,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    // Auto-refresh dashboard data when screen is entered
+    // Auto-refresh dashboard data when screen is first created
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.invalidate(dashboardProvider);
+      _refreshData();
     });
+  }
+
+  /// Refresh dashboard and low stock data
+  void _refreshData() {
+    ref.invalidate(dashboardProvider);
+    ref.invalidate(lowStockProvider);
   }
 
   @override
@@ -35,12 +44,31 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final displayName =
         user?.userMetadata?['display_name'] ?? user?.userMetadata?['name'] ?? 'Admin';
 
+    // Listen to item form state changes for real-time dashboard updates
+    // When item is successfully updated/created, auto-refresh dashboard
+    ref.listen<ItemFormState>(
+      itemFormNotifierProvider,
+      (previous, next) {
+        // Only refresh if status changed from non-success to success
+        // This prevents refresh on every build
+        if (previous?.isSuccess != true && next.isSuccess) {
+          debugPrint('[DASHBOARD] Item form success detected - auto-refreshing data');
+          _refreshData();
+        }
+      },
+    );
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Dashboard'),
       ),
       body: RefreshIndicator(
-        onRefresh: () => ref.read(dashboardProvider.notifier).refresh(),
+        onRefresh: () async {
+          await Future.wait([
+            ref.read(dashboardProvider.notifier).refresh(),
+            ref.read(lowStockProvider.notifier).refresh(),
+          ]);
+        },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(AppSpacing.screenPadding),
@@ -71,27 +99,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ),
               const SizedBox(height: AppSpacing.lg),
 
-              // Placeholder sections (Story 5.2)
-              Text(
-                'Stok Menipis',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.lg),
-                  child: Center(
-                    child: Text(
-                      '✅ Semua stok aman!',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
-                    ),
-                  ),
-                ),
-              ),
+              // Low Stock Alert Section (Story 5.2)
+              const LowStockAlert(),
             ],
           ),
         ),

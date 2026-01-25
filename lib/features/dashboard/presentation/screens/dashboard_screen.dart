@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../core/utils/formatters.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../inventory/data/providers/item_form_provider.dart';
@@ -65,7 +66,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   Text(
-                    '${order.customerName} - ${order.total} (Belum dibayar)',
+                    '${order.customerName} - ${formatRupiah(order.total)} (Belum dibayar)',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),

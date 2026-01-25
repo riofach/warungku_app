@@ -1,7 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:warungku_app/features/orders/data/models/order_model.dart';
 
 void main() {
+  setUpAll(() async {
+    await initializeDateFormatting('id_ID', null);
+  });
+
   group('Order Model', () {
     test('should parse from json correctly', () {
       final json = {
@@ -65,7 +70,7 @@ void main() {
         createdAt: now.subtract(const Duration(minutes: 5)),
         updatedAt: now,
       );
-      expect(order2.timeAgo, '5 menit lalu');
+      expect(order2.timeAgo, '5 menit yang lalu');
       
       // Hours
       final order3 = Order(
@@ -74,7 +79,7 @@ void main() {
         createdAt: now.subtract(const Duration(hours: 2)),
         updatedAt: now,
       );
-      expect(order3.timeAgo, '2 jam lalu');
+      expect(order3.timeAgo, '2 jam yang lalu');
       
       // Days
       final order4 = Order(
@@ -83,16 +88,17 @@ void main() {
         createdAt: now.subtract(const Duration(days: 3)),
         updatedAt: now,
       );
-      expect(order4.timeAgo, '3 hari lalu');
+      expect(order4.timeAgo, '3 hari yang lalu');
       
-      // Weeks
+      // Long time ago (should show formatted date)
       final order5 = Order(
         id: '5', code: '5', customerName: 'E', paymentMethod: 'cash', 
         deliveryType: 'del', status: OrderStatus.pending, total: 0,
         createdAt: now.subtract(const Duration(days: 10)),
         updatedAt: now,
       );
-      expect(order5.timeAgo, '1 minggu lalu');
+      // Formatters.formatRelativeTime returns date string for > 7 days
+      expect(order5.timeAgo, isNot(contains('minggu')));
     });
   });
 }

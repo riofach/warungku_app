@@ -1,6 +1,12 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/constants/supabase_constants.dart';
 import '../models/order_model.dart';
+
+/// Provider for OrderRepository
+final orderRepositoryProvider = Provider<OrderRepository>((ref) {
+  return OrderRepository();
+});
 
 class OrderRepository {
   final SupabaseClient _supabase;

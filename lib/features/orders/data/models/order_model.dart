@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/formatters.dart';
 
 /// Order status enum matching database constraint
 enum OrderStatus {
@@ -136,23 +137,8 @@ class Order {
   }
   
   /// Get time ago string in Indonesian
-  String get timeAgo {
-    final now = DateTime.now();
-    final difference = now.difference(createdAt);
-    
-    if (difference.inMinutes < 1) {
-      return 'Baru saja';
-    } else if (difference.inMinutes < 60) {
-      return '${difference.inMinutes} menit lalu';
-    } else if (difference.inHours < 24) {
-      return '${difference.inHours} jam lalu';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays} hari lalu';
-    } else {
-      return '${(difference.inDays / 7).floor()} minggu lalu';
-    }
-  }
-  
+  String get timeAgo => Formatters.formatRelativeTime(createdAt);
+
   Order copyWith({
     String? id,
     String? code,

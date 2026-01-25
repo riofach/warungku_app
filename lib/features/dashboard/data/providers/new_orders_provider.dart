@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/constants/supabase_constants.dart';
+import '../providers/dashboard_provider.dart';
 import '../../../orders/data/models/order_model.dart';
 import '../../../orders/data/repositories/order_repository.dart';
 
@@ -34,9 +35,7 @@ class NewOrdersNotifier extends AsyncNotifier<List<Order>> {
   }
   
   Future<List<Order>> _fetchNewOrders() async {
-    // Create repository instance manually or via provider if available
-    // Here we instantiate directly for simplicity or could use a provider
-    final repository = OrderRepository();
+    final repository = ref.read(orderRepositoryProvider);
     return repository.getNewOrders();
   }
   
@@ -76,16 +75,13 @@ class NewOrdersNotifier extends AsyncNotifier<List<Order>> {
       refresh();
       
       // Trigger notification callback
-      // We need to parse enough data for the notification
-      // Note: Full object might be incomplete without joins, but enough for "New Order from [Name]"
       try {
-        // Create a temporary order object for notification
         final order = Order.fromJson(newRecord);
         if (onNewOrderReceived != null) {
           onNewOrderReceived!(order);
         }
       } catch (e) {
-        debugPrint('Error parsing new order for notification: $e');
+        debugPrint('[NEW_ORDERS] Error parsing new order for notification: $e');
       }
     }
   }
@@ -100,8 +96,11 @@ class NewOrdersNotifier extends AsyncNotifier<List<Order>> {
         final updatedOrders = orders.where((o) => o.id != orderId).toList();
         state = AsyncData(updatedOrders);
       });
+      
+      // Refresh global dashboard data since an order is processed
+      ref.invalidate(dashboardProvider);
     } else if ((status == 'pending' || status == 'paid') && orderId != null) {
-      // If status updated TO pending/paid (unlikely but possible), refresh
+      // If status updated TO pending/paid, refresh
       refresh();
     }
   }

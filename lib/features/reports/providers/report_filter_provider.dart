@@ -27,10 +27,13 @@ class ReportFilterNotifier extends Notifier<ReportFilterState> {
   @override
   ReportFilterState build() {
     final now = DateTime.now();
-    // Start with Today
+    // Start with Today (Full Day 00:00 - 23:59)
+    final start = DateTime(now.year, now.month, now.day);
+    final end = DateTime(now.year, now.month, now.day, 23, 59, 59);
+    
     return ReportFilterState(
       period: ReportPeriod.today,
-      dateRange: DateTimeRange(start: now, end: now),
+      dateRange: DateTimeRange(start: start, end: end),
     );
   }
 

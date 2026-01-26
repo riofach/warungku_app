@@ -9,12 +9,14 @@ import '../../../inventory/data/providers/item_form_provider.dart';
 import '../../data/providers/dashboard_provider.dart';
 import '../../data/providers/low_stock_provider.dart';
 import '../../data/providers/new_orders_provider.dart';
+import '../../../reports/data/providers/report_providers.dart';
 import '../widgets/greeting_header.dart';
 import '../widgets/low_stock_alert.dart';
 import '../widgets/new_orders_section.dart';
 import '../widgets/omset_card.dart';
 import '../widgets/profit_card.dart';
 import '../widgets/transaction_count_card.dart';
+import '../widgets/top_selling_card.dart';
 import '../../../orders/data/models/order_model.dart';
 
 /// Dashboard screen - main home screen for admin
@@ -94,6 +96,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     ref.invalidate(dashboardProvider);
     ref.invalidate(lowStockProvider);
     ref.invalidate(newOrdersProvider);
+    ref.invalidate(topSellingItemsProvider);
   }
 
   @override
@@ -127,6 +130,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ref.read(dashboardProvider.notifier).refresh(),
             ref.read(lowStockProvider.notifier).refresh(),
             ref.read(newOrdersProvider.notifier).refresh(),
+            ref.refresh(topSellingItemsProvider.future),
           ]);
         },
         child: SingleChildScrollView(
@@ -165,6 +169,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
               // Low Stock Alert Section (Story 5.2)
               const LowStockAlert(),
+              const SizedBox(height: AppSpacing.lg),
+
+              // Top Selling Items (Story 5.4)
+              const TopSellingCard(),
             ],
           ),
         ),

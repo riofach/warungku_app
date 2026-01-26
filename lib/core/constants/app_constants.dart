@@ -48,4 +48,12 @@ class AppConstants {
   static const String settingWhatsappNumber = 'whatsapp_number';
   static const String settingDeliveryEnabled = 'delivery_enabled';
   static const String settingWarungName = 'warung_name';
+  
+  // Dashboard Strings
+  static const String dashboardTopItemsTitle = 'Item Terlaris';
+  static const String dashboardTopItemsEmpty = 'Belum ada penjualan periode ini';
+  static const String dashboardSoldLabel = 'terjual';
+  static const String dashboardPeriodToday = 'Hari Ini';
+  static const String dashboardPeriodWeek = 'Minggu Ini';
+  static const String dashboardPeriodMonth = 'Bulan Ini';
 }

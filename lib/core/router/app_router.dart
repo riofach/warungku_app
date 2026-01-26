@@ -87,6 +87,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: AppRoutes.settings,
             builder: (context, state) => const SettingsScreen(),
           ),
+          GoRoute(
+            path: AppRoutes.reports,
+            builder: (context, state) => const ReportsScreen(),
+          ),
         ],
       ),
 
@@ -133,10 +137,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.housingBlocks,
         builder: (context, state) => const HousingBlocksScreen(),
       ),
-      GoRoute(
-        path: AppRoutes.reports,
-        builder: (context, state) => const ReportsScreen(),
-      ),
+      // AppRoutes.reports moved to ShellRoute
       GoRoute(
         path: AppRoutes.adminManagement,
         builder: (context, state) => const AdminListScreen(),

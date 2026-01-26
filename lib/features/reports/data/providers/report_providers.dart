@@ -2,10 +2,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 // ignore: deprecated_member_use
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/date_helpers.dart';
 import '../models/top_item_model.dart';
 import '../repositories/report_repository.dart';
-import '../../../../core/constants/app_constants.dart';
 
 final reportRepositoryProvider = Provider<ReportRepository>((ref) {
   final supabase = Supabase.instance.client;

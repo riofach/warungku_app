@@ -47,10 +47,12 @@ class ReportRepository {
     
     for (var trx in transactions) {
       totalRevenue += trx.total;
-      // Calculate profit from items if available
-      for (var item in trx.items) {
-        totalProfit += item.profit;
-      }
+      
+      // Note: In MVP, buy_price is fetched from 'items' table via RPC.
+      // The standard 'getTransactions' query uses 'transaction_items' which lacks current buy_price.
+      // To prevent misleading data (Revenue becoming Profit), we set profit to 0 in fallback mode.
+      // Ideally, the RPC should always be used.
+      totalProfit += 0; 
     }
 
     final count = transactions.length;

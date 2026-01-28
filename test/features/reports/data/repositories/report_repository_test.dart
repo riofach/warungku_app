@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -6,6 +7,20 @@ import 'package:warungku_app/features/reports/data/repositories/report_repositor
 
 // Mock SupabaseClient
 class MockSupabaseClient extends Mock implements SupabaseClient {}
+
+// Fake PostgrestFilterBuilder to handle await
+class FakePostgrestFilterBuilder extends Fake
+    implements PostgrestFilterBuilder<dynamic> {
+  final dynamic _data;
+
+  FakePostgrestFilterBuilder(this._data);
+
+  @override
+  Future<T> then<T>(FutureOr<T> Function(dynamic value) onValue,
+      {Function? onError}) async {
+    return onValue(_data);
+  }
+}
 
 void main() {
   late ReportRepository repository;
@@ -20,7 +35,7 @@ void main() {
     test('getTopSellingItems returns list of TopItem on success', () async {
       final startDate = DateTime(2023, 1, 1);
       final endDate = DateTime(2023, 1, 31);
-      
+
       // Mock response data from RPC
       final mockData = [
         {
@@ -41,10 +56,11 @@ void main() {
       when(() => mockSupabaseClient.rpc(
         'get_top_selling_items',
         params: any(named: 'params'),
-      )).thenAnswer((_) async => mockData);
+      )).thenAnswer((_) => FakePostgrestFilterBuilder(mockData));
 
       // Execute
-      final result = await repository.getTopSellingItems(startDate, endDate, limit: 5);
+      final result =
+          await repository.getTopSellingItems(startDate, endDate, limit: 5);
 
       // Verify
       expect(result, isA<List<TopItem>>());

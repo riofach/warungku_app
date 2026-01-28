@@ -8,79 +8,128 @@ import '../widgets/report_summary_section.dart';
 import '../widgets/transaction_list_section.dart';
 import '../widgets/best_selling_section.dart';
 import '../../data/providers/report_data_provider.dart';
+import '../../data/providers/report_pdf_provider.dart';
 
 class ReportsScreen extends ConsumerWidget {
   const ReportsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Listen for PDF export errors
+    ref.listen(reportPdfProvider, (previous, next) {
+      if (next.hasError && !next.isLoading) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal export PDF: ${next.error}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    });
+
+    final pdfState = ref.watch(reportPdfProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Laporan'),
         centerTitle: true,
-      ),
-      body: Column(
-        children: [
-          Container(
-            color: Colors.white,
-            child: Column(
-              children: const [
-                ReportFilterSection(),
-                SizedBox(height: AppSpacing.md),
-                ReportDateDisplay(),
-                SizedBox(height: AppSpacing.md),
-              ],
-            ),
+        actions: [
+          IconButton(
+            onPressed: pdfState.isLoading 
+                ? null 
+                : () {
+                    ref.read(reportPdfProvider.notifier).export();
+                  },
+            icon: const Icon(Icons.print_rounded),
+            tooltip: 'Export PDF',
           ),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: () async {
-                ref.invalidate(reportSummaryProvider);
-                ref.invalidate(reportTransactionsProvider);
-                ref.invalidate(topSellingItemsProvider);
-              },
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
+        ],
+      ),
+      body: Stack(
+        children: [
+          Column(
+            children: [
+              Container(
+                color: Colors.white,
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    ReportFilterSection(),
+                    SizedBox(height: AppSpacing.md),
+                    ReportDateDisplay(),
+                    SizedBox(height: AppSpacing.md),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: () async {
+                    ref.invalidate(reportSummaryProvider);
+                    ref.invalidate(reportTransactionsProvider);
+                    ref.invalidate(topSellingItemsProvider);
+                  },
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: AppSpacing.md),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                          child: Text(
+                            'Ringkasan',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        const ReportSummarySection(),
+            
+                        const SizedBox(height: AppSpacing.lg),
+                        const BestSellingSection(),
+                        
+                        const SizedBox(height: AppSpacing.lg),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                          child: Text(
+                            'Riwayat Transaksi',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        const TransactionListSection(
+                          shrinkWrap: true,
+                          physics: NeverScrollableScrollPhysics(),
+                        ),
+                        const SizedBox(height: AppSpacing.xl),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          
+          // Loading Overlay
+          if (pdfState.isLoading)
+            Container(
+              color: Colors.black54,
+              child: const Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    const SizedBox(height: AppSpacing.md),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                      child: Text(
-                        'Ringkasan',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                    CircularProgressIndicator(color: Colors.white),
+                    SizedBox(height: 16),
+                    Text(
+                      'Menyiapkan PDF...',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                     ),
-                    const SizedBox(height: AppSpacing.sm),
-                    const ReportSummarySection(),
-
-                    const SizedBox(height: AppSpacing.lg),
-                    const BestSellingSection(),
-                    
-                    const SizedBox(height: AppSpacing.lg),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                      child: Text(
-                        'Riwayat Transaksi',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    const TransactionListSection(
-                      shrinkWrap: true,
-                      physics: NeverScrollableScrollPhysics(),
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
                   ],
                 ),
               ),
             ),
-          ),
         ],
       ),
     );

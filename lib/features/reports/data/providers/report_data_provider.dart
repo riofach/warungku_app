@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../features/transactions/data/models/transaction_model.dart';
 import '../../providers/report_filter_provider.dart';
 import '../models/report_summary_model.dart';
+import '../models/top_item_model.dart';
 import '../repositories/report_repository.dart';
 
 // Repository Provider
@@ -24,4 +25,17 @@ final reportTransactionsProvider = FutureProvider.autoDispose<List<Transaction>>
   final filter = ref.watch(reportFilterProvider);
   
   return repository.getTransactions(filter.dateRange.start, filter.dateRange.end);
+});
+
+// Top Selling Items Provider
+final topSellingItemsProvider = FutureProvider.autoDispose<List<TopItem>>((ref) async {
+  final repository = ref.watch(reportRepositoryProvider);
+  final filter = ref.watch(reportFilterProvider);
+  
+  // Display top 5 items by default for the widget
+  return repository.getTopSellingItems(
+    filter.dateRange.start, 
+    filter.dateRange.end,
+    limit: 5,
+  );
 });

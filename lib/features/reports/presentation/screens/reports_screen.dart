@@ -6,6 +6,7 @@ import '../widgets/report_date_display.dart';
 import '../widgets/report_filter_section.dart';
 import '../widgets/report_summary_section.dart';
 import '../widgets/transaction_list_section.dart';
+import '../widgets/best_selling_section.dart';
 import '../../data/providers/report_data_provider.dart';
 
 class ReportsScreen extends ConsumerWidget {
@@ -36,6 +37,7 @@ class ReportsScreen extends ConsumerWidget {
               onRefresh: () async {
                 ref.invalidate(reportSummaryProvider);
                 ref.invalidate(reportTransactionsProvider);
+                ref.invalidate(topSellingItemsProvider);
               },
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
@@ -54,6 +56,9 @@ class ReportsScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     const ReportSummarySection(),
+
+                    const SizedBox(height: AppSpacing.lg),
+                    const BestSellingSection(),
                     
                     const SizedBox(height: AppSpacing.lg),
                     Padding(

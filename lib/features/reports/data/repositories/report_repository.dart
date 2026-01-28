@@ -92,14 +92,14 @@ class ReportRepository {
     }
   }
 
-  Future<List<TopItem>> getTopSellingItems(DateTime start, DateTime end) async {
+  Future<List<TopItem>> getTopSellingItems(DateTime start, DateTime end, {int limit = 10}) async {
     try {
       final response = await _supabase.rpc(
         'get_top_selling_items',
         params: {
           'start_date': start.toUtc().toIso8601String(),
           'end_date': end.toUtc().toIso8601String(),
-          'limit_count': 5,
+          'limit_count': limit,
         },
       );
       

@@ -48,10 +48,10 @@ class OrderRepository {
           .from(SupabaseConstants.tableOrders)
           .select('''
             *,
-            housing_block:housing_blocks(*),
+            housing_block:housing_blocks(id, name),
             order_items:order_items(
               *,
-              items:items(*)
+              items:items(name, image_url)
             )
           ''')
           .eq(SupabaseConstants.colId, orderId)

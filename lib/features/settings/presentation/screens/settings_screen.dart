@@ -7,6 +7,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/confirmation_dialog.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../auth/data/providers/auth_provider.dart';
+import '../../../orders/data/repositories/order_repository.dart';
 
 /// Settings/Menu screen
 /// FR48: Admin dapat melihat informasi akun dan profil warung
@@ -103,6 +104,10 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ],
 
+          // Development Tools
+          const _SectionHeader(title: 'Development Tools'),
+          const _SimulationButton(),
+
           const SizedBox(height: AppSpacing.lg),
 
           // Logout button
@@ -147,6 +152,68 @@ class SettingsScreen extends ConsumerWidget {
     }
   }
 }
+
+class _SimulationButton extends ConsumerStatefulWidget {
+  const _SimulationButton();
+
+  @override
+  ConsumerState<_SimulationButton> createState() => _SimulationButtonState();
+}
+
+class _SimulationButtonState extends ConsumerState<_SimulationButton> {
+  bool _isLoading = false;
+
+  Future<void> _simulateOrder() async {
+    setState(() => _isLoading = true);
+    try {
+      await ref.read(orderRepositoryProvider).createDummyOrder();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Simulated Order Created!'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal simulasi: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      color: Colors.blue.shade50,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.blue.shade100),
+      ),
+      child: ListTile(
+        leading: _isLoading 
+            ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
+            : const Icon(Icons.science, color: AppColors.primary),
+        title: const Text(
+          'Simulasi Pesanan Baru',
+          style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600),
+        ),
+        subtitle: const Text('Buat pesanan dummy untuk testing'),
+        onTap: _isLoading ? null : _simulateOrder,
+      ),
+    );
+  }
+}
+
 
 /// Logout button widget
 /// Shows loading state during logout process

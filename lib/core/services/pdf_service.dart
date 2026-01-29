@@ -182,6 +182,11 @@ class PdfService {
     );
   }
 
+  /// Format date for PDF with timezone conversion (UTC -> Local)
+  String formatDateForPdf(DateTime date) {
+    return DateFormat('dd MMM yyyy, HH:mm', 'id_ID').format(date.toLocal());
+  }
+
   pw.Widget _buildTransactionTable(List<Transaction> transactions) {
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -195,7 +200,7 @@ class PdfService {
           headers: ['Waktu', 'Kode', 'Metode', 'Total'],
           data: transactions.map((t) {
             return [
-              DateFormat('dd MMM yyyy, HH:mm').format(t.createdAt),
+              formatDateForPdf(t.createdAt),
               t.code,
               t.paymentMethod.toUpperCase(),
               formatRupiah(t.total),

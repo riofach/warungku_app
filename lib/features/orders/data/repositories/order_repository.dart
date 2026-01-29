@@ -40,4 +40,56 @@ class OrderRepository {
       throw Exception('Gagal memuat pesanan: ${e.toString()}');
     }
   }
+
+  /// Create a dummy order for testing/simulation
+  Future<void> createDummyOrder() async {
+    // 1. Fetch a real item to ensure FK constraint
+    final itemResponse = await _supabase
+        .from(SupabaseConstants.tableItems)
+        .select('${SupabaseConstants.colId}, ${SupabaseConstants.colSellPrice}, ${SupabaseConstants.colName}')
+        .limit(1)
+        .maybeSingle();
+
+    if (itemResponse == null) {
+      throw Exception('Tidak ada item di database. Tambahkan item terlebih dahulu.');
+    }
+
+    final itemId = itemResponse[SupabaseConstants.colId] as String;
+    final itemPrice = itemResponse[SupabaseConstants.colSellPrice] as int;
+    final itemName = itemResponse[SupabaseConstants.colName] as String;
+
+    // 2. Prepare dummy order data
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    // WRG-SIM-12345
+    final code = 'WRG-SIM-${timestamp.toString().substring(timestamp.toString().length - 6)}';
+    final qty = 1 + (DateTime.now().second % 3); // 1-3 items
+    final total = itemPrice * qty;
+
+    // 3. Insert Order
+    final orderResponse = await _supabase
+        .from(SupabaseConstants.tableOrders)
+        .insert({
+          SupabaseConstants.colCode: code,
+          SupabaseConstants.colCustomerName: 'Simulated User',
+          SupabaseConstants.colPaymentMethod: 'qris',
+          SupabaseConstants.colDeliveryType: 'delivery',
+          SupabaseConstants.colStatus: 'paid', // Trigger "New Order" flow immediately
+          SupabaseConstants.colTotal: total,
+          // housing_block_id can be null or fetched if needed, keeping simple
+        })
+        .select()
+        .single();
+
+    final orderId = orderResponse[SupabaseConstants.colId] as String;
+
+    // 4. Insert Order Items
+    await _supabase.from(SupabaseConstants.tableOrderItems).insert({
+      SupabaseConstants.colOrderId: orderId,
+      SupabaseConstants.colItemId: itemId,
+      'item_name': itemName, // Assuming table has item_name column based on error
+      SupabaseConstants.colQuantity: qty,
+      SupabaseConstants.colPrice: itemPrice,
+      SupabaseConstants.colSubtotal: total,
+    });
+  }
 }

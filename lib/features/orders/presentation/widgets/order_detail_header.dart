@@ -28,7 +28,7 @@ class OrderDetailHeader extends StatelessWidget {
                   fontSize: 24, // Slight adjustment if headlineMedium is too big
                 ),
               ),
-              _buildStatusBadge(order.status),
+              _buildStatusBadge(order.status, order.deliveryType),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -58,7 +58,7 @@ class OrderDetailHeader extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusBadge(OrderStatus status) {
+  Widget _buildStatusBadge(OrderStatus status, String deliveryType) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
       decoration: BoxDecoration(
@@ -72,7 +72,7 @@ class OrderDetailHeader extends StatelessWidget {
           Icon(status.icon, size: 14, color: status.color),
           const SizedBox(width: 4),
           Text(
-            status.label,
+            status.getLabel(deliveryType: deliveryType),
             style: AppTypography.labelSmall.copyWith(color: status.color),
           ),
         ],

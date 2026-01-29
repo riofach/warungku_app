@@ -13,7 +13,10 @@ class OrderActionButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final nextAction = OrderStatusHelper.getNextStatusAction(order.status.name);
+    final nextAction = OrderStatusHelper.getNextStatusAction(
+      order.status.name,
+      deliveryType: order.deliveryType,
+    );
     
     // If no action available (e.g. completed), return empty
     if (nextAction == null) return const SizedBox.shrink();
@@ -71,7 +74,12 @@ class OrderActionButton extends ConsumerWidget {
     if (nextStatus == 'processing') {
       message = 'Proses pesanan ini?';
     } else if (nextStatus == 'ready') {
-      message = 'Pesanan sudah siap diambil/diantar?';
+      // Use the button text (without "Siap ") to make the message more specific
+      // e.g., "Pesanan sudah Diantar?" or "Pesanan sudah Diambil?"
+      // But buttonText is "Siap Diantar" or "Siap Diambil".
+      // Let's just use the button text to construct a natural sentence.
+      final action = buttonText.replaceFirst('Siap ', '');
+      message = 'Pesanan sudah siap $action?';
     } else if (nextStatus == 'completed') {
       message = 'Selesaikan pesanan? Aksi ini tidak dapat dibatalkan.';
     }

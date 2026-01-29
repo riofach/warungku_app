@@ -20,6 +20,17 @@ enum OrderStatus {
     );
   }
   
+  String getLabel({String? deliveryType}) {
+    if (this == OrderStatus.ready && deliveryType != null) {
+      if (deliveryType.toLowerCase() == 'delivery') {
+        return 'Siap Diantar';
+      } else if (deliveryType.toLowerCase() == 'pickup') {
+        return 'Siap Diambil';
+      }
+    }
+    return label;
+  }
+  
   String get label {
     switch (this) {
       case OrderStatus.pending:

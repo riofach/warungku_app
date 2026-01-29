@@ -17,11 +17,24 @@ void main() {
       expect(result?.$2, 'Proses Pesanan');
     });
 
-    test('processing status should return ready action', () {
-      final result = OrderStatusHelper.getNextStatusAction('processing');
-      expect(result, isNotNull);
-      expect(result?.$1, 'ready');
-      expect(result?.$2, 'Siap Diantar/Diambil');
+    test('processing status with delivery type should return correct action text', () {
+      // Delivery
+      final resultDelivery = OrderStatusHelper.getNextStatusAction('processing', deliveryType: 'delivery');
+      expect(resultDelivery, isNotNull);
+      expect(resultDelivery?.$1, 'ready');
+      expect(resultDelivery?.$2, 'Siap Diantar');
+
+      // Pickup
+      final resultPickup = OrderStatusHelper.getNextStatusAction('processing', deliveryType: 'pickup');
+      expect(resultPickup, isNotNull);
+      expect(resultPickup?.$1, 'ready');
+      expect(resultPickup?.$2, 'Siap Diambil');
+
+      // Unspecified
+      final resultDefault = OrderStatusHelper.getNextStatusAction('processing');
+      expect(resultDefault, isNotNull);
+      expect(resultDefault?.$1, 'ready');
+      expect(resultDefault?.$2, 'Siap Diantar/Diambil');
     });
 
     test('ready status should return completed action', () {

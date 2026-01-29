@@ -73,6 +73,22 @@ class OrderRepository {
         .map((data) => data.map((json) => Order.fromJson(json)).toList());
   }
 
+  /// Update order status
+  Future<void> updateOrderStatus(String orderId, String newStatus) async {
+    try {
+      await _supabase
+          .from(SupabaseConstants.tableOrders)
+          .update({
+            SupabaseConstants.colStatus: newStatus,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq(SupabaseConstants.colId, orderId)
+          .timeout(_timeout);
+    } catch (e) {
+      throw Exception('Gagal memperbarui status: ${e.toString()}');
+    }
+  }
+
   /// Create a dummy order for testing/simulation
   Future<void> createDummyOrder() async {
     // 1. Fetch a real item to ensure FK constraint

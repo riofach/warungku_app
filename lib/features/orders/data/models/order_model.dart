@@ -97,6 +97,7 @@ class Order {
   final String? notes;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final List<OrderItem> items;
   
   const Order({
     required this.id,
@@ -111,6 +112,7 @@ class Order {
     this.notes,
     required this.createdAt,
     required this.updatedAt,
+    this.items = const [],
   });
   
   factory Order.fromJson(Map<String, dynamic> json) {
@@ -118,6 +120,14 @@ class Order {
     String? blockName;
     if (json['housing_block'] != null) {
       blockName = json['housing_block']['name'] as String?;
+    }
+
+    // Handle nested order_items
+    List<OrderItem> orderItems = [];
+    if (json['order_items'] != null) {
+      orderItems = (json['order_items'] as List)
+          .map((item) => OrderItem.fromJson(item as Map<String, dynamic>))
+          .toList();
     }
     
     return Order(
@@ -133,6 +143,7 @@ class Order {
       notes: json['notes'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
+      items: orderItems,
     );
   }
   
@@ -152,6 +163,7 @@ class Order {
     String? notes,
     DateTime? createdAt,
     DateTime? updatedAt,
+    List<OrderItem>? items,
   }) {
     return Order(
       id: id ?? this.id,
@@ -166,6 +178,37 @@ class Order {
       notes: notes ?? this.notes,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      items: items ?? this.items,
+    );
+  }
+}
+
+class OrderItem {
+  final String id;
+  final int quantity;
+  final int price;
+  final int subtotal;
+  final String itemName;
+  final String? imageUrl;
+
+  const OrderItem({
+    required this.id,
+    required this.quantity,
+    required this.price,
+    required this.subtotal,
+    required this.itemName,
+    this.imageUrl,
+  });
+
+  factory OrderItem.fromJson(Map<String, dynamic> json) {
+    final itemData = json['items'] as Map<String, dynamic>? ?? {};
+    return OrderItem(
+      id: json['id'] as String,
+      quantity: json['quantity'] as int,
+      price: json['price'] as int,
+      subtotal: json['subtotal'] as int,
+      itemName: itemData['name'] as String? ?? 'Unknown Item',
+      imageUrl: itemData['image_url'] as String?,
     );
   }
 }

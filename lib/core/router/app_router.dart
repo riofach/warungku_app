@@ -5,6 +5,7 @@ import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
 import '../../features/pos/presentation/screens/pos_screen.dart';
 import '../../features/orders/presentation/screens/orders_screen.dart';
+import '../../features/orders/presentation/screens/order_detail_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/inventory/presentation/screens/items_screen.dart';
 import '../../features/inventory/presentation/screens/item_form_screen.dart';
@@ -27,6 +28,7 @@ class AppRoutes {
   static const String dashboard = '/dashboard';
   static const String pos = '/pos';
   static const String orders = '/orders';
+  static const String orderDetail = '/orders/detail';
   static const String settings = '/settings';
   static const String items = '/items';
   static const String itemAdd = '/items/add';
@@ -151,6 +153,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final transaction = state.extra as Transaction;
           return TransactionSuccessScreen(transaction: transaction);
+        },
+      ),
+      GoRoute(
+        path: '${AppRoutes.orderDetail}/:id',
+        builder: (context, state) {
+          final orderId = state.pathParameters['id']!;
+          return OrderDetailScreen(orderId: orderId);
         },
       ),
     ],

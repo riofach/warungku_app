@@ -41,6 +41,38 @@ class OrderRepository {
     }
   }
 
+  /// Get order by ID with full details (items, housing block)
+  Future<Order> getOrderById(String orderId) async {
+    try {
+      final response = await _supabase
+          .from(SupabaseConstants.tableOrders)
+          .select('''
+            *,
+            housing_block:housing_blocks(*),
+            order_items:order_items(
+              *,
+              items:items(*)
+            )
+          ''')
+          .eq(SupabaseConstants.colId, orderId)
+          .single()
+          .timeout(_timeout);
+      
+      return Order.fromJson(response);
+    } catch (e) {
+      throw Exception('Gagal memuat detail pesanan: ${e.toString()}');
+    }
+  }
+
+  /// Get real-time stream of all orders
+  Stream<List<Order>> getOrdersStream() {
+    return _supabase
+        .from(SupabaseConstants.tableOrders)
+        .stream(primaryKey: [SupabaseConstants.colId])
+        .order('created_at', ascending: false)
+        .map((data) => data.map((json) => Order.fromJson(json)).toList());
+  }
+
   /// Create a dummy order for testing/simulation
   Future<void> createDummyOrder() async {
     // 1. Fetch a real item to ensure FK constraint

@@ -1,38 +1,109 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../../../core/router/app_router.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/widgets/empty_state_widget.dart';
+import '../../../../core/widgets/error_widget.dart';
+import '../../../../core/widgets/loading_widget.dart';
+import '../../../../features/inventory/data/providers/housing_blocks_provider.dart';
+import '../../data/models/order_model.dart';
+import '../../data/providers/orders_provider.dart';
+import '../widgets/order_card.dart';
 
-/// Orders screen - manage website orders
-class OrdersScreen extends StatelessWidget {
+class OrdersScreen extends ConsumerStatefulWidget {
   const OrdersScreen({super.key});
 
   @override
+  ConsumerState<OrdersScreen> createState() => _OrdersScreenState();
+}
+
+class _OrdersScreenState extends ConsumerState<OrdersScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 4, vsync: this);
+    
+    // Ensure housing blocks are loaded for mapping names
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(housingBlockListNotifierProvider.notifier).loadBlocks();
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final ordersAsync = ref.watch(ordersProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Pesanan'),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.receipt_long,
-              size: 64,
-              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Text(
-              'Manajemen Pesanan',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              'Akan diimplementasikan pada Epic 7',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
+        bottom: TabBar(
+          controller: _tabController,
+          isScrollable: true,
+          tabs: const [
+            Tab(text: 'Baru'),
+            Tab(text: 'Proses'),
+            Tab(text: 'Selesai'),
+            Tab(text: 'Batal'),
           ],
         ),
       ),
+      body: ordersAsync.when(
+        data: (orders) {
+          return TabBarView(
+            controller: _tabController,
+            children: [
+              _buildOrderList(orders, [OrderStatus.pending, OrderStatus.paid]),
+              _buildOrderList(orders, [OrderStatus.processing, OrderStatus.ready, OrderStatus.delivered]),
+              _buildOrderList(orders, [OrderStatus.completed]),
+              _buildOrderList(orders, [OrderStatus.cancelled, OrderStatus.failed]),
+            ],
+          );
+        },
+        loading: () => const LoadingWidget(),
+        error: (error, stack) => AppErrorWidget(
+          message: error.toString(),
+          onRetry: () => ref.refresh(ordersProvider),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOrderList(List<Order> allOrders, List<OrderStatus> statuses) {
+    final filteredOrders = allOrders
+        .where((order) => statuses.contains(order.status))
+        .toList();
+
+    if (filteredOrders.isEmpty) {
+      return const EmptyStateWidget(
+        title: 'Belum ada pesanan',
+        subtitle: 'Pesanan dengan status ini belum tersedia',
+        icon: Icons.assignment_outlined,
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      itemCount: filteredOrders.length,
+      itemBuilder: (context, index) {
+        final order = filteredOrders[index];
+        return OrderCard(
+          order: order,
+          onTap: () {
+            context.push('${AppRoutes.orderDetail}/${order.id}');
+          },
+        );
+      },
     );
   }
 }

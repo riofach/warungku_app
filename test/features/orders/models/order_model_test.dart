@@ -33,6 +33,51 @@ void main() {
       expect(order.total, 50000);
     });
 
+    test('should parse order items correctly', () {
+      final json = {
+        'id': '123',
+        'code': 'WRG-2023-001',
+        'customer_name': 'John Doe',
+        'payment_method': 'cash',
+        'delivery_type': 'delivery',
+        'status': 'pending',
+        'total': 50000,
+        'created_at': '2023-01-01T10:00:00.000Z',
+        'updated_at': '2023-01-01T10:00:00.000Z',
+        'order_items': [
+          {
+            'id': 'item-1',
+            'quantity': 2,
+            'price': 10000,
+            'subtotal': 20000,
+            'items': {
+              'name': 'Nasi Goreng',
+              'image_url': 'http://example.com/nasigoreng.jpg'
+            }
+          },
+          {
+            'id': 'item-2',
+            'quantity': 1,
+            'price': 30000,
+            'subtotal': 30000,
+            'items': {
+              'name': 'Ayam Bakar',
+              'image_url': null
+            }
+          }
+        ]
+      };
+
+      final order = Order.fromJson(json);
+
+      expect(order.items.length, 2);
+      expect(order.items[0].itemName, 'Nasi Goreng');
+      expect(order.items[0].quantity, 2);
+      expect(order.items[0].price, 10000);
+      expect(order.items[1].itemName, 'Ayam Bakar');
+      expect(order.items[1].imageUrl, isNull);
+    });
+
     test('should handle missing housing block', () {
       final json = {
         'id': '123',

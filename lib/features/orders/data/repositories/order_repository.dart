@@ -1,3 +1,4 @@
+import 'dart:async'; // Tambahkan ini
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/constants/supabase_constants.dart';
@@ -64,13 +65,38 @@ class OrderRepository {
     }
   }
 
-  /// Get real-time stream of all orders
+  /// Get real-time stream of all orders (using old stream method)
   Stream<List<Order>> getOrdersStream() {
     return _supabase
         .from(SupabaseConstants.tableOrders)
         .stream(primaryKey: [SupabaseConstants.colId])
         .order('created_at', ascending: false)
         .map((data) => data.map((json) => Order.fromJson(json)).toList());
+  }
+
+  /// Listens to real-time changes (INSERT and UPDATE) on the 'orders' table
+  /// using Postgres Changes.
+  Stream<PostgresChangePayload> getOrdersRealtimeStream() {
+    final StreamController<PostgresChangePayload> controller = StreamController();
+    final RealtimeChannel channel = _supabase.channel('orders_channel');
+
+    channel.onPostgresChanges(
+      event: PostgresChangeEvent.all, // Listen for all events (INSERT, UPDATE, DELETE)
+      schema: 'public', // Ensure this is your database schema
+      table: SupabaseConstants.tableOrders,
+      callback: (payload) {
+        controller.add(payload);
+      },
+    );
+
+    channel.subscribe(); // Subscribe to the channel
+
+    // When the stream is cancelled, unsubscribe from the channel
+    controller.onCancel = () async {
+      await channel.unsubscribe();
+    };
+
+    return controller.stream;
   }
 
   /// Update order status

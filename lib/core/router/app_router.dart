@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -41,9 +42,13 @@ class AppRoutes {
   static const String transactionSuccess = '/transaction-success';
 }
 
+/// Global key for root navigator
+final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
+
 /// Router provider
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: AppRoutes.login,
     debugLogDiagnostics: kDebugMode, // Only log in debug mode
     redirect: (context, state) {

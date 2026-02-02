@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart'; // Needed for PostgresChangePayload
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -10,7 +11,8 @@ import '../../../../core/widgets/loading_widget.dart';
 import '../../../../features/inventory/data/providers/housing_blocks_provider.dart';
 import '../../data/models/order_model.dart';
 import '../../data/providers/orders_provider.dart';
-import '../widgets/order_card.dart';
+import '../../data/providers/order_realtime_events_provider.dart'; // Needed for real-time listeners
+import '../widgets/order_card.dart'; // Make sure this widget exists or is implemented
 
 class OrdersScreen extends ConsumerStatefulWidget {
   const OrdersScreen({super.key});
@@ -42,6 +44,24 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Mendengarkan perubahan real-time dari orderUpdateEventsProvider
+    ref.listen<AsyncValue<PostgresChangePayload>>(orderUpdateEventsProvider, (previous, next) {
+      next.whenData((payload) {
+        // Ketika ada event UPDATE, refresh daftar pesanan
+        ref.invalidate(ordersProvider); // Invalidate ordersProvider yang ada
+        debugPrint('OrdersScreen: Detected order UPDATE, refreshing list.');
+      });
+    });
+
+    // Mendengarkan pesanan baru dari newOrderEventsProvider
+    ref.listen<AsyncValue<PostgresChangePayload>>(newOrderEventsProvider, (previous, next) {
+      next.whenData((payload) {
+        // Ketika ada event INSERT, refresh daftar pesanan
+        ref.invalidate(ordersProvider); // Invalidate ordersProvider yang ada
+        debugPrint('OrdersScreen: Detected new order INSERT, refreshing list.');
+      });
+    });
+
     final ordersAsync = ref.watch(ordersProvider);
 
     return Scaffold(

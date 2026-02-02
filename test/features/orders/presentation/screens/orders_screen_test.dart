@@ -1,11 +1,17 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:warungku_app/core/constants/supabase_constants.dart';
 import 'package:warungku_app/features/inventory/data/models/housing_block_model.dart';
 import 'package:warungku_app/features/inventory/data/providers/housing_blocks_provider.dart';
 import 'package:warungku_app/features/orders/data/models/order_model.dart';
+import 'package:warungku_app/features/orders/data/repositories/order_repository.dart';
 import 'package:warungku_app/features/orders/data/providers/orders_provider.dart';
+import 'package:warungku_app/features/orders/data/providers/order_realtime_events_provider.dart';
 import 'package:warungku_app/features/orders/presentation/screens/orders_screen.dart';
 import 'package:warungku_app/features/orders/presentation/widgets/order_card.dart';
 
@@ -24,6 +30,9 @@ class MockHousingBlockListNotifier extends HousingBlockListNotifier {
     ]);
   }
 }
+
+// Mock OrderRepository for real-time tests
+class MockOrderRepository extends Mock implements OrderRepository {}
 
 void main() {
   setUpAll(() async {
@@ -178,5 +187,177 @@ void main() {
 
     expect(find.text('ORDER-5'), findsOneWidget);
     expect(find.text('Belum ada pesanan'), findsNothing);
+  });
+
+  // Real-time update tests
+  group('Real-time Updates', () {
+    late MockOrderRepository mockOrderRepository;
+    late StreamController<PostgresChangePayload> realtimeOrdersSourceController;
+
+    setUp(() {
+      mockOrderRepository = MockOrderRepository();
+      realtimeOrdersSourceController = StreamController<PostgresChangePayload>();
+
+      when(() => mockOrderRepository.getOrdersRealtimeStream())
+          .thenAnswer((_) => realtimeOrdersSourceController.stream);
+      when(() => mockOrderRepository.getNewOrders(limit: any(named: 'limit')))
+          .thenAnswer((_) async => []);
+    });
+
+    tearDown(() async {
+      await realtimeOrdersSourceController.close();
+    });
+
+    testWidgets('OrdersScreen refreshes on new order INSERT event', (tester) async {
+      // Initial empty state
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            ordersProvider.overrideWith((ref) => Stream.value([])),
+            housingBlockListNotifierProvider.overrideWith(() => MockHousingBlockListNotifier()),
+            orderRepositoryProvider.overrideWithValue(mockOrderRepository),
+          ],
+          child: const MaterialApp(
+            home: OrdersScreen(),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      // Verify empty state
+      expect(find.text('Belum ada pesanan'), findsOneWidget);
+
+      // Prepare updated order list after INSERT event
+      final newOrder = Order(
+        id: 'new-order-1',
+        code: 'ORDER-NEW',
+        customerName: 'Real-time Customer',
+        paymentMethod: 'cash',
+        deliveryType: 'pickup',
+        status: OrderStatus.pending,
+        total: 15000,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      when(() => mockOrderRepository.getNewOrders(limit: any(named: 'limit')))
+          .thenAnswer((_) async => [newOrder]);
+
+      // Simulate INSERT event
+      final insertPayload = PostgresChangePayload(
+        eventType: PostgresChangeEvent.insert,
+        commitTimestamp: DateTime.now(),
+        schema: 'public',
+        table: SupabaseConstants.tableOrders,
+        errors: const [],
+        oldRecord: const {},
+        newRecord: {
+          'id': 'new-order-1',
+          'code': 'ORDER-NEW',
+          'customer_name': 'Real-time Customer',
+          'total': 15000,
+          'status': 'pending',
+          'payment_method': 'cash',
+          'delivery_type': 'pickup',
+          'created_at': DateTime.now().toIso8601String(),
+        },
+      );
+
+      realtimeOrdersSourceController.add(insertPayload);
+      await tester.pumpAndSettle();
+
+      // Verify the new order is now displayed
+      expect(find.text('ORDER-NEW'), findsOneWidget);
+      expect(find.text('Belum ada pesanan'), findsNothing);
+    });
+
+    testWidgets('OrdersScreen refreshes on order status UPDATE event', (tester) async {
+      // Initial order with pending status
+      final initialOrder = Order(
+        id: 'order-update-1',
+        code: 'ORDER-UPDATE',
+        customerName: 'Status Change Customer',
+        paymentMethod: 'cash',
+        deliveryType: 'pickup',
+        status: OrderStatus.pending,
+        total: 25000,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            ordersProvider.overrideWith((ref) => Stream.value([initialOrder])),
+            housingBlockListNotifierProvider.overrideWith(() => MockHousingBlockListNotifier()),
+            orderRepositoryProvider.overrideWithValue(mockOrderRepository),
+          ],
+          child: const MaterialApp(
+            home: OrdersScreen(),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      // Verify initial order is in 'Baru' tab
+      expect(find.text('ORDER-UPDATE'), findsOneWidget);
+
+      // Tap 'Proses' tab - should be empty initially
+      await tester.tap(find.text('Proses'));
+      await tester.pumpAndSettle();
+      expect(find.text('Belum ada pesanan'), findsOneWidget);
+
+      // Prepare updated order with processing status
+      final updatedOrder = Order(
+        id: 'order-update-1',
+        code: 'ORDER-UPDATE',
+        customerName: 'Status Change Customer',
+        paymentMethod: 'cash',
+        deliveryType: 'pickup',
+        status: OrderStatus.processing, // Changed from pending to processing
+        total: 25000,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      when(() => mockOrderRepository.getNewOrders(limit: any(named: 'limit')))
+          .thenAnswer((_) async => [updatedOrder]);
+
+      // Simulate UPDATE event
+      final updatePayload = PostgresChangePayload(
+        eventType: PostgresChangeEvent.update,
+        commitTimestamp: DateTime.now(),
+        schema: 'public',
+        table: SupabaseConstants.tableOrders,
+        errors: const [],
+        oldRecord: {'status': 'pending'},
+        newRecord: {
+          'id': 'order-update-1',
+          'code': 'ORDER-UPDATE',
+          'customer_name': 'Status Change Customer',
+          'total': 25000,
+          'status': 'processing',
+          'payment_method': 'cash',
+          'delivery_type': 'pickup',
+          'created_at': DateTime.now().toIso8601String(),
+        },
+      );
+
+      realtimeOrdersSourceController.add(updatePayload);
+      await tester.pumpAndSettle();
+
+      // The order should now appear in 'Proses' tab
+      expect(find.text('ORDER-UPDATE'), findsOneWidget);
+      expect(find.text('Belum ada pesanan'), findsNothing);
+
+      // Switch back to 'Baru' tab - should be empty now
+      await tester.tap(find.text('Baru'));
+      await tester.pumpAndSettle();
+      expect(find.text('Belum ada pesanan'), findsOneWidget);
+    });
   });
 }

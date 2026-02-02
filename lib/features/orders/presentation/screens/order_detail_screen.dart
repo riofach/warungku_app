@@ -31,7 +31,15 @@ class OrderDetailScreen extends ConsumerWidget {
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              // Jika tidak bisa pop (misal dari notifikasi/deep link),
+              // arahkan ke halaman daftar pesanan
+              context.go('/orders');
+            }
+          },
         ),
         actions: [
           orderAsync.when(

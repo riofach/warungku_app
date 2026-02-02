@@ -29,7 +29,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
-    
+
     // Ensure housing blocks are loaded for mapping names
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(housingBlockListNotifierProvider.notifier).loadBlocks();
@@ -45,7 +45,10 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
   @override
   Widget build(BuildContext context) {
     // Mendengarkan perubahan real-time dari orderUpdateEventsProvider
-    ref.listen<AsyncValue<PostgresChangePayload>>(orderUpdateEventsProvider, (previous, next) {
+    ref.listen<AsyncValue<PostgresChangePayload>>(orderUpdateEventsProvider, (
+      previous,
+      next,
+    ) {
       next.whenData((payload) {
         // Ketika ada event UPDATE, refresh daftar pesanan
         ref.invalidate(ordersProvider); // Invalidate ordersProvider yang ada
@@ -54,14 +57,16 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
     });
 
     // Mendengarkan pesanan baru dari newOrderEventsProvider
-    ref.listen<AsyncValue<PostgresChangePayload>>(newOrderEventsProvider, (previous, next) {
+    ref.listen<AsyncValue<PostgresChangePayload>>(newOrderEventsProvider, (
+      previous,
+      next,
+    ) {
       next.whenData((payload) {
         // Ketika ada event INSERT, refresh daftar pesanan
         ref.invalidate(ordersProvider); // Invalidate ordersProvider yang ada
         debugPrint('OrdersScreen: Detected new order INSERT, refreshing list.');
       });
     });
-
     final ordersAsync = ref.watch(ordersProvider);
 
     return Scaffold(
@@ -84,9 +89,16 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
             controller: _tabController,
             children: [
               _buildOrderList(orders, [OrderStatus.pending, OrderStatus.paid]),
-              _buildOrderList(orders, [OrderStatus.processing, OrderStatus.ready, OrderStatus.delivered]),
+              _buildOrderList(orders, [
+                OrderStatus.processing,
+                OrderStatus.ready,
+                OrderStatus.delivered,
+              ]),
               _buildOrderList(orders, [OrderStatus.completed]),
-              _buildOrderList(orders, [OrderStatus.cancelled, OrderStatus.failed]),
+              _buildOrderList(orders, [
+                OrderStatus.cancelled,
+                OrderStatus.failed,
+              ]),
             ],
           );
         },

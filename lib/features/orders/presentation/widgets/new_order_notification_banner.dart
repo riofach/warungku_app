@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/theme/app_colors.dart';
 
 class NewOrderNotificationBanner extends StatelessWidget {
   final String customerName;
@@ -19,7 +20,7 @@ class NewOrderNotificationBanner extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(16.0),
           decoration: BoxDecoration(
-            color: Colors.green.shade700, // Green for new order notification
+            color: AppColors.success, // Green for new order notification
             borderRadius: BorderRadius.only(
               bottomLeft: Radius.circular(8.0),
               bottomRight: Radius.circular(8.0),
@@ -41,7 +42,7 @@ class NewOrderNotificationBanner extends StatelessWidget {
                 const SizedBox(width: 12.0),
                 Expanded(
                   child: Text(
-                    '🛒 Pesanan baru dari $customerName',
+                    'Pesanan baru dari $customerName',
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -50,7 +51,11 @@ class NewOrderNotificationBanner extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 16.0),
+                const Icon(
+                  Icons.arrow_forward_ios,
+                  color: Colors.white,
+                  size: 16.0,
+                ),
               ],
             ),
           ),

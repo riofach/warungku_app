@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -30,6 +31,9 @@ class _NewOrderNotificationOverlayHostState
   void _showNewOrderNotification(Order order) {
     debugPrint('[NOTIFICATION_OVERLAY] 🔔 Showing notification for: ${order.code}');
     
+    // UI/UX: Haptic feedback for better tactile response
+    HapticFeedback.lightImpact();
+    
     // Cancel any existing timer
     _autoDismissTimer?.cancel();
     
@@ -39,7 +43,7 @@ class _NewOrderNotificationOverlayHostState
       _overlayEntry?.remove();
       _overlayEntry = null;
       
-      // Small delay to create "flash" effect between old and new
+      // UI/UX: Small delay to create "flash" effect between old and new
       Future.delayed(const Duration(milliseconds: 100), () {
         _createAndShowOverlay(order);
       });
@@ -80,6 +84,9 @@ class _NewOrderNotificationOverlayHostState
 
   void _navigateToOrder(Order order) {
     debugPrint('[NOTIFICATION_OVERLAY] 👆 Notification tapped for: ${order.code}');
+    
+    // UI/UX: Haptic feedback on tap
+    HapticFeedback.mediumImpact();
     
     // Cancel timer and dismiss
     _autoDismissTimer?.cancel();
@@ -175,57 +182,82 @@ class AnimatedNotificationBanner extends StatefulWidget {
 
 class _AnimatedNotificationBannerState extends State<AnimatedNotificationBanner>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<Offset> _slideAnimation;
-  late Animation<double> _fadeAnimation;
+  AnimationController? _controller;
+  Animation<Offset>? _slideAnimation;
+  Animation<double>? _fadeAnimation;
+  bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    debugPrint('[ANIMATED_BANNER] 🎬 Initializing animation for: ${widget.order.code}');
+    debugPrint('[ANIMATED_BANNER] 🎬 initState for: ${widget.order.code}');
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 400),
-      vsync: this,
-    );
+    // UI/UX FIX: Initialize animations here after dependencies are available
+    // MediaQuery.of(context) cannot be called in initState()
+    if (!_isInitialized) {
+      debugPrint('[ANIMATED_BANNER] 🎬 Initializing animation for: ${widget.order.code}');
+      
+      // UI/UX: Animation duration 150-300ms for micro-interactions
+      // Check for reduced motion preference for accessibility
+      final bool reduceMotion = MediaQuery.of(context).disableAnimations;
+      
+      _controller = AnimationController(
+        duration: Duration(milliseconds: reduceMotion ? 50 : 250),
+        vsync: this,
+      );
 
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, -1.0), // Start from above (off screen)
-      end: Offset.zero, // End at normal position
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOutBack, // Bouncy effect
-    ));
+      // UI/UX: Use transform/opacity for performance (GPU accelerated)
+      _slideAnimation = Tween<Offset>(
+        begin: const Offset(0, -1.0), // Start from above (off screen)
+        end: Offset.zero, // End at normal position
+      ).animate(CurvedAnimation(
+        parent: _controller!,
+        // UI/UX: Reduced curve for users who prefer less motion
+        curve: reduceMotion ? Curves.linear : Curves.easeOutBack,
+      ));
 
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeIn,
-    ));
+      _fadeAnimation = Tween<double>(
+        begin: 0.0,
+        end: 1.0,
+      ).animate(CurvedAnimation(
+        parent: _controller!,
+        curve: reduceMotion ? Curves.linear : Curves.easeIn,
+      ));
 
-    // Start animation
-    _controller.forward();
+      // Start animation
+      _controller!.forward();
+      
+      _isInitialized = true;
+    }
   }
 
   @override
   void dispose() {
     debugPrint('[ANIMATED_BANNER] 🧹 Disposing animation for: ${widget.order.code}');
-    _controller.dispose();
+    _controller?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    // If not initialized yet, show empty while waiting for didChangeDependencies
+    if (!_isInitialized || _slideAnimation == null || _fadeAnimation == null) {
+      return const SizedBox.shrink();
+    }
+    
     return Positioned(
       top: 0,
       left: 0,
       right: 0,
       child: SlideTransition(
-        position: _slideAnimation,
+        position: _slideAnimation!,
         child: FadeTransition(
-          opacity: _fadeAnimation,
+          opacity: _fadeAnimation!,
           child: _NotificationContent(
             order: widget.order,
             onTap: widget.onTap,
@@ -248,105 +280,116 @@ class _NotificationContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(16.0),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.green[600]!,
-                Colors.green[400]!,
-              ],
-            ),
-            borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(16.0),
-              bottomRight: Radius.circular(16.0),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                spreadRadius: 2,
-                blurRadius: 8,
-                offset: const Offset(0, 4),
+    // UI/UX: Accessibility - semantic label for screen readers
+    return Semantics(
+      button: true,
+      label: 'Pesanan baru dari ${order.customerName}, kode ${order.code}. Tap untuk melihat detail.',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          // UI/UX: Visual feedback for tap
+          splashColor: Colors.white.withOpacity(0.3),
+          highlightColor: Colors.white.withOpacity(0.1),
+          child: Container(
+            padding: const EdgeInsets.all(16.0),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.green[600]!,
+                  Colors.green[400]!,
+                ],
               ),
-            ],
-          ),
-          child: SafeArea(
-            bottom: false,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header with icon and close button
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.notifications_active,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Pesanan Baru!',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                          Text(
-                            order.code,
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.9),
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Icon(
-                      Icons.arrow_forward_ios,
-                      color: Colors.white,
-                      size: 16,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                // Customer info
-                Row(
-                  children: [
-                    const Icon(Icons.person, color: Colors.white, size: 16),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        order.customerName,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(16.0),
+                bottomRight: Radius.circular(16.0),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  spreadRadius: 2,
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
                 ),
               ],
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header with icon and close button
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        // UI/UX: Exclude icon from semantic tree (decorative)
+                        child: const ExcludeSemantics(
+                          child: Icon(
+                            Icons.notifications_active,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Pesanan Baru!',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                            Text(
+                              order.code,
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.9),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        Icons.arrow_forward_ios,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  // Customer info
+                  Row(
+                    children: [
+                      const Icon(Icons.person, color: Colors.white, size: 16),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          order.customerName,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),

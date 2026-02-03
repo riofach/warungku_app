@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../data/providers/order_realtime_events_provider.dart';
 import '../../data/models/order_model.dart';
 
@@ -294,12 +295,12 @@ class _NotificationContent extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(16.0),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
+              gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Colors.green[600]!,
-                  Colors.green[400]!,
+                  AppColors.success, // Use Design Token
+                  AppColors.successLight, // Use Design Token
                 ],
               ),
               borderRadius: const BorderRadius.only(

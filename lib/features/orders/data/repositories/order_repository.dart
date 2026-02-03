@@ -78,6 +78,7 @@ class OrderRepository {
           housing_block:housing_blocks(id, name)
         ''')
         .order('created_at', ascending: false)
+        .limit(50) // Limit to 50 recent orders for performance
         .timeout(_timeout);
 
     yield (initialOrders as List)
@@ -94,6 +95,7 @@ class OrderRepository {
             housing_block:housing_blocks(id, name)
           ''')
           .order('created_at', ascending: false)
+          .limit(50) // Limit to 50 recent orders for performance
           .timeout(_timeout);
 
       yield (refreshedOrders as List)
@@ -262,10 +264,14 @@ class OrderRepository {
     final housingBlockId = housingBlockResponse[SupabaseConstants.colId] as String;
 
     // 3. Prepare dummy order data
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    // WRG-SIM-12345
-    final code = 'WRG-SIM-${timestamp.toString().substring(timestamp.toString().length - 6)}';
-    final qty = 1 + (DateTime.now().second % 3); // 1-3 items
+    final now = DateTime.now();
+    final timestamp = now.millisecondsSinceEpoch;
+    // WRG-SIM-HHmmss-fff (Unique enough for testing)
+    final timeStr = '${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}';
+    final millisStr = now.millisecond.toString().padLeft(3, '0');
+    final code = 'WRG-SIM-$timeStr-$millisStr';
+    
+    final qty = 1 + (now.second % 3); // 1-3 items
     final total = itemPrice * qty;
 
     // 4. Insert Order with valid housing_block_id

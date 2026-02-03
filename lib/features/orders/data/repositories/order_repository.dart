@@ -1,4 +1,5 @@
 import 'dart:async'; // Tambahkan ini
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/constants/supabase_constants.dart';
@@ -65,18 +66,46 @@ class OrderRepository {
     }
   }
 
-  /// Get real-time stream of all orders (using old stream method)
-  Stream<List<Order>> getOrdersStream() {
-    return _supabase
+  /// Get orders stream with server-side join for housing blocks
+  /// Uses periodic refresh with server-side join instead of realtime stream
+  /// to ensure housing block data is always available
+  Stream<List<Order>> getOrdersStream() async* {
+    // Initial fetch with server-side join
+    final initialOrders = await _supabase
         .from(SupabaseConstants.tableOrders)
-        .stream(primaryKey: [SupabaseConstants.colId])
+        .select('''
+          *,
+          housing_block:housing_blocks(id, name)
+        ''')
         .order('created_at', ascending: false)
-        .map((data) => data.map((json) => Order.fromJson(json)).toList());
+        .timeout(_timeout);
+
+    yield (initialOrders as List)
+        .map((json) => Order.fromJson(json))
+        .toList();
+
+    // Listen to realtime changes for updates
+    await for (final payload in getOrdersRealtimeStream()) {
+      // On any change, re-fetch with join to get complete data
+      final refreshedOrders = await _supabase
+          .from(SupabaseConstants.tableOrders)
+          .select('''
+            *,
+            housing_block:housing_blocks(id, name)
+          ''')
+          .order('created_at', ascending: false)
+          .timeout(_timeout);
+
+      yield (refreshedOrders as List)
+          .map((json) => Order.fromJson(json))
+          .toList();
+    }
   }
 
   /// Listens to real-time changes (INSERT and UPDATE) on the 'orders' table
   /// using Postgres Changes.
   Stream<PostgresChangePayload> getOrdersRealtimeStream() {
+    debugPrint('[ORDER_REPOSITORY] Setting up realtime stream...');
     final StreamController<PostgresChangePayload> controller = StreamController();
     final RealtimeChannel channel = _supabase.channel('orders_channel');
 
@@ -85,11 +114,19 @@ class OrderRepository {
       schema: 'public', // Ensure this is your database schema
       table: SupabaseConstants.tableOrders,
       callback: (payload) {
+        debugPrint('[ORDER_REPOSITORY] 🔔 Realtime event received: ${payload.eventType}');
+        debugPrint('[ORDER_REPOSITORY] 📦 Payload: ${payload.newRecord}');
         controller.add(payload);
+        debugPrint('[ORDER_REPOSITORY] ✅ Payload added to controller');
       },
     );
 
-    channel.subscribe(); // Subscribe to the channel
+    channel.subscribe((status, error) {
+      debugPrint('[ORDER_REPOSITORY] 📡 Subscription status: $status');
+      if (error != null) {
+        debugPrint('[ORDER_REPOSITORY] ❌ Subscription error: $error');
+      }
+    });
 
     // When the stream is cancelled, unsubscribe from the channel
     controller.onCancel = () async {
@@ -132,14 +169,27 @@ class OrderRepository {
     final itemPrice = itemResponse[SupabaseConstants.colSellPrice] as int;
     final itemName = itemResponse[SupabaseConstants.colName] as String;
 
-    // 2. Prepare dummy order data
+    // 2. Fetch a random housing block for valid FK constraint
+    final housingBlockResponse = await _supabase
+        .from(SupabaseConstants.tableHousingBlocks)
+        .select(SupabaseConstants.colId)
+        .limit(1)
+        .maybeSingle();
+
+    if (housingBlockResponse == null) {
+      throw Exception('Tidak ada housing block di database. Tambahkan housing block terlebih dahulu.');
+    }
+
+    final housingBlockId = housingBlockResponse[SupabaseConstants.colId] as String;
+
+    // 3. Prepare dummy order data
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     // WRG-SIM-12345
     final code = 'WRG-SIM-${timestamp.toString().substring(timestamp.toString().length - 6)}';
     final qty = 1 + (DateTime.now().second % 3); // 1-3 items
     final total = itemPrice * qty;
 
-    // 3. Insert Order
+    // 4. Insert Order with valid housing_block_id
     final orderResponse = await _supabase
         .from(SupabaseConstants.tableOrders)
         .insert({
@@ -149,18 +199,18 @@ class OrderRepository {
           SupabaseConstants.colDeliveryType: 'delivery',
           SupabaseConstants.colStatus: 'paid', // Trigger "New Order" flow immediately
           SupabaseConstants.colTotal: total,
-          // housing_block_id can be null or fetched if needed, keeping simple
+          SupabaseConstants.colHousingBlockId: housingBlockId, // Valid FK to housing_blocks
         })
         .select()
         .single();
 
     final orderId = orderResponse[SupabaseConstants.colId] as String;
 
-    // 4. Insert Order Items
+    // 5. Insert Order Items
     await _supabase.from(SupabaseConstants.tableOrderItems).insert({
       SupabaseConstants.colOrderId: orderId,
       SupabaseConstants.colItemId: itemId,
-      'item_name': itemName, // Assuming table has item_name column based on error
+      'item_name': itemName,
       SupabaseConstants.colQuantity: qty,
       SupabaseConstants.colPrice: itemPrice,
       SupabaseConstants.colSubtotal: total,

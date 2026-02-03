@@ -141,19 +141,41 @@ class Order {
           .toList();
     }
     
+    // Defensive parsing for realtime payload compatibility
+    final String id = json['id']?.toString() ?? '';
+    final String code = json['code']?.toString() ?? 'UNKNOWN';
+    final String customerName = json['customer_name']?.toString() ?? 'Pelanggan Tidak Dikenal';
+    final String paymentMethod = json['payment_method']?.toString() ?? 'unknown';
+    final String deliveryType = json['delivery_type']?.toString() ?? 'pickup';
+    final String status = json['status']?.toString() ?? 'pending';
+    
+    // Parse dates with fallback
+    DateTime createdAt;
+    DateTime updatedAt;
+    try {
+      createdAt = DateTime.parse(json['created_at']?.toString() ?? DateTime.now().toIso8601String());
+    } catch (e) {
+      createdAt = DateTime.now();
+    }
+    try {
+      updatedAt = DateTime.parse(json['updated_at']?.toString() ?? DateTime.now().toIso8601String());
+    } catch (e) {
+      updatedAt = DateTime.now();
+    }
+    
     return Order(
-      id: json['id'] as String,
-      code: json['code'] as String,
-      housingBlockId: json['housing_block_id'] as String?,
+      id: id,
+      code: code,
+      housingBlockId: json['housing_block_id']?.toString(),
       housingBlockName: blockName,
-      customerName: json['customer_name'] as String,
-      paymentMethod: json['payment_method'] as String,
-      deliveryType: json['delivery_type'] as String,
-      status: OrderStatus.fromString(json['status'] as String? ?? 'pending'),
-      total: json['total'] as int? ?? 0,
-      notes: json['notes'] as String?,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+      customerName: customerName,
+      paymentMethod: paymentMethod,
+      deliveryType: deliveryType,
+      status: OrderStatus.fromString(status),
+      total: (json['total'] as num?)?.toInt() ?? 0,
+      notes: json['notes']?.toString(),
+      createdAt: createdAt,
+      updatedAt: updatedAt,
       items: orderItems,
     );
   }

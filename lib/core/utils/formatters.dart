@@ -18,36 +18,48 @@ class Formatters {
     return _currencyFormat.format(amount);
   }
 
-  /// Format DateTime to Indonesian date: "15 Januari 2026"
+  /// Format DateTime to Indonesian date in WIB: "15 Januari 2026"
   static String formatDate(DateTime date) {
-    return DateFormat('d MMMM yyyy', 'id_ID').format(date);
+    final wibDate = toWIB(date);
+    return DateFormat('d MMMM yyyy', 'id_ID').format(wibDate);
   }
 
-  /// Format DateTime to Indonesian date with time: "15 Januari 2026, 10:30"
+  /// Konversi DateTime UTC ke WIB (Asia/Jakarta, UTC+7)
+  static DateTime toWIB(DateTime date) {
+    // Jika date sudah dalam UTC atau local, konversi ke WIB
+    return date.toUtc().add(const Duration(hours: 7));
+  }
+
+  /// Format DateTime to Indonesian date with time in WIB: "15 Januari 2026, 10:30"
   static String formatDateTime(DateTime date) {
-    return DateFormat('d MMMM yyyy, HH:mm', 'id_ID').format(date);
+    final wibDate = toWIB(date);
+    return DateFormat('d MMMM yyyy, HH:mm', 'id_ID').format(wibDate);
   }
 
-  /// Format DateTime to short date: "15/01/2026"
+  /// Format DateTime to short date in WIB: "15/01/2026"
   static String formatDateShort(DateTime date) {
-    return DateFormat('dd/MM/yyyy').format(date);
+    final wibDate = toWIB(date);
+    return DateFormat('dd/MM/yyyy').format(wibDate);
   }
 
-  /// Format DateTime to compact date with short month: "15 Jan 2026"
+  /// Format DateTime to compact date with short month in WIB: "15 Jan 2026"
   /// Used for admin list cards, compact displays
   static String formatDateCompact(DateTime date) {
-    return DateFormat('dd MMM yyyy', 'id_ID').format(date);
+    final wibDate = toWIB(date);
+    return DateFormat('dd MMM yyyy', 'id_ID').format(wibDate);
   }
 
-  /// Format DateTime to time only: "10:30"
+  /// Format DateTime to time only in WIB: "10:30"
   static String formatTime(DateTime date) {
-    return DateFormat('HH:mm').format(date);
+    final wibDate = toWIB(date);
+    return DateFormat('HH:mm').format(wibDate);
   }
 
-  /// Format DateTime to relative time: "5 menit yang lalu"
+  /// Format DateTime to relative time in WIB: "5 menit yang lalu"
   static String formatRelativeTime(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date);
+    final now = DateTime.now().toUtc().add(const Duration(hours: 7)); // WIB now
+    final wibDate = toWIB(date);
+    final difference = now.difference(wibDate);
 
     if (difference.inDays > 7) {
       return formatDate(date);

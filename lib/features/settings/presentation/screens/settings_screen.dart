@@ -76,12 +76,7 @@ class SettingsScreen extends ConsumerWidget {
             icon: Icons.schedule_outlined,
             title: 'Jam Operasional',
             subtitle: 'Atur waktu buka tutup',
-            onTap: () {
-              // Placeholder for Story 8.2
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Fitur akan datang: Jam Operasional')),
-              );
-            },
+            onTap: () => context.push(AppRoutes.settingsOperatingHours),
           ),
           SettingsTile(
             icon: Icons.settings_outlined,

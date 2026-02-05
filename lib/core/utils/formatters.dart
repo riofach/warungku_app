@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
@@ -98,6 +99,26 @@ class Formatters {
     final dateStr = DateFormat('yyyyMMdd').format(today);
     final seqStr = sequence.toString().padLeft(4, '0');
     return 'TRX-$dateStr-$seqStr';
+  }
+
+  /// Format TimeOfDay to "HH:mm" (e.g. 08:30)
+  static String formatTimeOfDay(TimeOfDay time) {
+    final hour = time.hour.toString().padLeft(2, '0');
+    final minute = time.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
+  /// Parse "HH:mm" string to TimeOfDay
+  static TimeOfDay parseTimeOfDay(String timeStr) {
+    try {
+      final parts = timeStr.split(':');
+      if (parts.length != 2) throw const FormatException("Invalid time format");
+      final hour = int.parse(parts[0]);
+      final minute = int.parse(parts[1]);
+      return TimeOfDay(hour: hour, minute: minute);
+    } catch (e) {
+      rethrow;
+    }
   }
 }
 

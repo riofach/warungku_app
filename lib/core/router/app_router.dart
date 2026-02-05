@@ -8,6 +8,7 @@ import '../../features/pos/presentation/screens/pos_screen.dart';
 import '../../features/orders/presentation/screens/orders_screen.dart';
 import '../../features/orders/presentation/screens/order_detail_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
+import '../../features/settings/presentation/screens/operating_hours_screen.dart';
 import '../../features/inventory/presentation/screens/items_screen.dart';
 import '../../features/inventory/presentation/screens/item_form_screen.dart';
 import '../../features/inventory/presentation/screens/categories_screen.dart';
@@ -95,6 +96,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppRoutes.settings,
             builder: (context, state) => const SettingsScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.settingsOperatingHours,
+            builder: (context, state) => const OperatingHoursScreen(),
           ),
           GoRoute(
             path: AppRoutes.reports,

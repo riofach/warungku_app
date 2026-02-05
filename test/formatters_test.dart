@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:warungku_app/core/utils/formatters.dart';
@@ -48,6 +49,17 @@ void main() {
       expect(formatted, contains('2026'));
       // Check length is reasonable for "15 Jan 2026" format
       expect(formatted.length, greaterThanOrEqualTo(10));
+    });
+
+    test('formatTimeOfDay should format HH:mm', () {
+      expect(Formatters.formatTimeOfDay(const TimeOfDay(hour: 8, minute: 30)), '08:30');
+      expect(Formatters.formatTimeOfDay(const TimeOfDay(hour: 23, minute: 5)), '23:05');
+      expect(Formatters.formatTimeOfDay(const TimeOfDay(hour: 0, minute: 0)), '00:00');
+    });
+
+    test('parseTimeOfDay should parse HH:mm', () {
+      expect(Formatters.parseTimeOfDay('08:30'), const TimeOfDay(hour: 8, minute: 30));
+      expect(Formatters.parseTimeOfDay('23:05'), const TimeOfDay(hour: 23, minute: 5));
     });
   });
 }

@@ -91,7 +91,7 @@ final ordersProvider = StreamProvider<List<Order>>((ref) {
     }
   }
   
-  // Listen to connection state changes
+  // Listen to connection state changes (for transitions)
   final connectionSub = ref.listen<ConnectionState>(
     connectionStateProvider,
     (previous, next) {
@@ -103,14 +103,18 @@ final ordersProvider = StreamProvider<List<Order>>((ref) {
         debugPrint('[ORDERS_PROVIDER] Connection restored, refreshing...');
         fetchOrders();
       }
-      
-      // When in polling mode, fetch data periodically
-      if (next == ConnectionState.polling) {
-        debugPrint('[ORDERS_PROVIDER] Polling mode, fetching...');
-        fetchOrders();
-      }
     },
   );
+
+  // Listen to the connection stream for polling ticks
+  // The stream emits events even if the state value doesn't change
+  final monitor = ref.read(connectionMonitorProvider);
+  final streamSub = monitor.connectionStateStream.listen((state) {
+    if (state == ConnectionState.polling) {
+      debugPrint('[ORDERS_PROVIDER] Polling tick received, fetching...');
+      fetchOrders();
+    }
+  });
   
   // Start fetching (but don't block on first load)
   fetchOrders();
@@ -119,6 +123,7 @@ final ordersProvider = StreamProvider<List<Order>>((ref) {
   ref.onDispose(() {
     debugPrint('[ORDERS_PROVIDER] Disposing...');
     connectionSub.close();
+    streamSub.cancel();
     controller.close();
   });
   

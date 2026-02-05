@@ -213,13 +213,13 @@ class RealtimeConnectionMonitor {
   }
 
   /// Try to establish connection
-  void _tryConnect() {
+  Future<void> _tryConnect() async {
     debugPrint('[CONNECTION_MONITOR] Attempting to connect...');
 
     try {
       // Clean up existing channel
       if (_channel != null) {
-        _channel!.unsubscribe();
+        await _channel!.unsubscribe();
         _channel = null;
       }
 

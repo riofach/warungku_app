@@ -31,6 +31,8 @@ class AppRoutes {
   static const String orders = '/orders';
   static const String orderDetail = '/orders/detail';
   static const String settings = '/settings';
+  static const String settingsOperatingHours = '/settings/operating-hours'; // Story 8.2
+  static const String settingsGeneral = '/settings/general'; // Story 8.3
   static const String items = '/items';
   static const String itemAdd = '/items/add';
   static const String itemEdit = '/items/edit'; // Story 3.5: Edit route base

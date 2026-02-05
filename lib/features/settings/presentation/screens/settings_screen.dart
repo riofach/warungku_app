@@ -8,6 +8,8 @@ import '../../../../core/widgets/confirmation_dialog.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../auth/data/providers/auth_provider.dart';
 import '../../../orders/data/repositories/order_repository.dart';
+import '../widgets/account_header.dart';
+import '../widgets/settings_tile.dart';
 
 /// Settings/Menu screen
 /// FR48: Admin dapat melihat informasi akun dan profil warung
@@ -28,31 +30,25 @@ class SettingsScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(AppSpacing.screenPadding),
         children: [
           // Account section
-          const _SectionHeader(title: 'Akun'),
-          _MenuTile(
-            icon: Icons.person_outline,
-            title: 'Profil Admin',
-            subtitle: currentUser?.email ?? 'admin',
-            onTap: () {
-              // TODO: Navigate to profile
-            },
-          ),
+          const AccountHeader(),
+          
+          const SizedBox(height: AppSpacing.md),
 
           // Data Management section
           const _SectionHeader(title: 'Kelola Data'),
-          _MenuTile(
+          SettingsTile(
             icon: Icons.inventory_2_outlined,
             title: 'Barang',
             subtitle: 'Kelola produk warung',
             onTap: () => context.push(AppRoutes.items),
           ),
-          _MenuTile(
+          SettingsTile(
             icon: Icons.category_outlined,
             title: 'Kategori',
             subtitle: 'Kelola kategori barang',
             onTap: () => context.push(AppRoutes.categories),
           ),
-          _MenuTile(
+          SettingsTile(
             icon: Icons.location_city_outlined,
             title: 'Blok Perumahan',
             subtitle: 'Kelola blok untuk delivery',
@@ -61,13 +57,13 @@ class SettingsScreen extends ConsumerWidget {
 
           // Reports section
           const _SectionHeader(title: 'Laporan'),
-          _MenuTile(
+          SettingsTile(
             icon: Icons.bar_chart_outlined,
             title: 'Laporan Penjualan',
             subtitle: 'Lihat laporan & export PDF',
             onTap: () => context.push(AppRoutes.reports),
           ),
-          _MenuTile(
+          SettingsTile(
             icon: Icons.receipt_long_outlined,
             title: 'Riwayat Transaksi',
             subtitle: 'Lihat semua transaksi kasir',
@@ -76,27 +72,33 @@ class SettingsScreen extends ConsumerWidget {
 
           // Settings section
           const _SectionHeader(title: 'Pengaturan'),
-          _MenuTile(
+          SettingsTile(
             icon: Icons.schedule_outlined,
             title: 'Jam Operasional',
             subtitle: 'Atur waktu buka tutup',
             onTap: () {
-              // TODO: Navigate to operating hours
+              // Placeholder for Story 8.2
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Fitur akan datang: Jam Operasional')),
+              );
             },
           ),
-          _MenuTile(
+          SettingsTile(
             icon: Icons.settings_outlined,
             title: 'Pengaturan Lainnya',
             subtitle: 'WhatsApp, Delivery, dll',
             onTap: () {
-              // TODO: Navigate to settings detail
+              // Placeholder for Story 8.3
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Fitur akan datang: Pengaturan Lainnya')),
+              );
             },
           ),
 
           // Admin Management section (Owner only)
           if (currentUser?.isOwner ?? false) ...[
             const _SectionHeader(title: 'Admin'),
-            _MenuTile(
+            SettingsTile(
               icon: Icons.group_outlined,
               title: 'Kelola Admin',
               subtitle: 'Tambah atau kelola akun admin',
@@ -270,34 +272,6 @@ class _SectionHeader extends StatelessWidget {
               color: AppColors.textSecondary,
               fontWeight: FontWeight.w600,
             ),
-      ),
-    );
-  }
-}
-
-class _MenuTile extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-
-  const _MenuTile({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: ListTile(
-        leading: Icon(icon, color: AppColors.primary),
-        title: Text(title),
-        subtitle: Text(subtitle),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: onTap,
       ),
     );
   }

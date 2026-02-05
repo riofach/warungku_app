@@ -43,6 +43,29 @@ class OrderRepository {
     }
   }
 
+  /// Get all orders with housing block data
+  /// Used for initial fetch and polling fallback
+  Future<List<Order>> getOrders({int limit = 50}) async {
+    try {
+      final response = await _supabase
+          .from(SupabaseConstants.tableOrders)
+          .select('''
+            *,
+            housing_block:housing_blocks(id, name)
+          ''')
+          .order('created_at', ascending: false)
+          .limit(limit)
+          .timeout(_timeout);
+      
+      return (response as List)
+          .map((json) => Order.fromJson(json))
+          .toList();
+    } catch (e) {
+      debugPrint('[ORDER_REPOSITORY] Error fetching orders: $e');
+      throw Exception('Gagal memuat pesanan: ${e.toString()}');
+    }
+  }
+
   /// Get order by ID with full details (items, housing block)
   Future<Order> getOrderById(String orderId) async {
     try {

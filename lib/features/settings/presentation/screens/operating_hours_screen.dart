@@ -18,6 +18,7 @@ class _OperatingHoursScreenState extends ConsumerState<OperatingHoursScreen> {
   TimeOfDay? _openTime;
   TimeOfDay? _closeTime;
   bool _isInitialized = false;
+  bool _isSaving = false;
 
   @override
   Widget build(BuildContext context) {
@@ -70,13 +71,19 @@ class _OperatingHoursScreenState extends ConsumerState<OperatingHoursScreen> {
                 ),
                 const Spacer(),
                 ElevatedButton(
-                  onPressed: _saveSettings,
+                  onPressed: _isSaving ? null : _saveSettings,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
                   ),
-                  child: const Text('Simpan'),
+                  child: _isSaving 
+                    ? const SizedBox(
+                        height: 20, 
+                        width: 20, 
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                      )
+                    : const Text('Simpan'),
                 ),
               ],
             ),
@@ -128,7 +135,7 @@ class _OperatingHoursScreenState extends ConsumerState<OperatingHoursScreen> {
     );
   }
 
-  void _saveSettings() {
+  Future<void> _saveSettings() async {
     if (_openTime == null || _closeTime == null) return;
 
     // Validation: Open < Close
@@ -145,24 +152,31 @@ class _OperatingHoursScreenState extends ConsumerState<OperatingHoursScreen> {
       return;
     }
 
-    ref.read(operatingHoursProvider.notifier).saveOperatingHours(_openTime!, _closeTime!).then((_) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Berhasil disimpan'),
-              backgroundColor: AppColors.success,
-            ),
-          );
-        }
-    }).catchError((e) {
-         if (mounted) {
-           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Gagal menyimpan: $e'),
-              backgroundColor: AppColors.error,
-            ),
-          );
-         }
-    });
+    setState(() => _isSaving = true);
+
+    try {
+      await ref.read(operatingHoursProvider.notifier).saveOperatingHours(_openTime!, _closeTime!);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Berhasil disimpan'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal menyimpan: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
   }
 }

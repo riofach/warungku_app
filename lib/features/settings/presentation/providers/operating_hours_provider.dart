@@ -41,8 +41,13 @@ class OperatingHoursNotifier extends AsyncNotifier<OperatingHours> {
   }
 
   Future<void> saveOperatingHours(TimeOfDay open, TimeOfDay close) async {
-    state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() async {
+    // Don't set state to loading to avoid rebuilding the UI with a loading spinner
+    // instead, we return the Future and let the UI handle the loading state (e.g. on the button)
+    
+    // Optimistic update or wait for result? 
+    // Let's wait for result to ensure DB is updated.
+    
+    try {
       final repository = ref.read(settingsRepositoryProvider);
       final openStr = Formatters.formatTimeOfDay(open);
       final closeStr = Formatters.formatTimeOfDay(close);
@@ -50,8 +55,15 @@ class OperatingHoursNotifier extends AsyncNotifier<OperatingHours> {
       
       await repository.updateSetting('operating_hours', value);
       
-      return OperatingHours(open: open, close: close);
-    });
+      // Update state with new values only after success
+      state = AsyncValue.data(OperatingHours(open: open, close: close));
+    } catch (e, stack) {
+      // If error, we can optionally update state to error, but usually 
+      // for form submissions we just throw so UI can show snackbar
+      // and keep the form data visible.
+      state = AsyncValue.error(e, stack);
+      rethrow;
+    }
   }
 }
 

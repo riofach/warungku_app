@@ -21,13 +21,17 @@ class OrderDetailHeader extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                order.code,
-                style: AppTypography.headlineMedium.copyWith(
-                  color: AppColors.primary,
-                  fontSize: 24, // Slight adjustment if headlineMedium is too big
+              Expanded( // Wrap text with Expanded to take available space
+                child: Text(
+                  order.code,
+                  style: AppTypography.headlineMedium.copyWith(
+                    color: AppColors.primary,
+                    fontSize: 24,
+                  ),
+                  overflow: TextOverflow.ellipsis, // Add ellipsis for overflow
                 ),
               ),
+              const SizedBox(width: AppSpacing.sm), // Add spacing between items
               _buildStatusBadge(order.status, order.deliveryType),
             ],
           ),
@@ -71,9 +75,12 @@ class OrderDetailHeader extends StatelessWidget {
         children: [
           Icon(status.icon, size: 14, color: status.color),
           const SizedBox(width: 4),
-          Text(
-            status.getLabel(deliveryType: deliveryType),
-            style: AppTypography.labelSmall.copyWith(color: status.color),
+          Flexible( // Added Flexible to prevent overflow
+            child: Text(
+              status.getLabel(deliveryType: deliveryType),
+              style: AppTypography.labelSmall.copyWith(color: status.color),
+              overflow: TextOverflow.ellipsis, // Ensure ellipsis if still too long
+            ),
           ),
         ],
       ),

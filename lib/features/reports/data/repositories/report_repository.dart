@@ -52,7 +52,7 @@ class ReportRepository {
       // The standard 'getTransactions' query uses 'transaction_items' which lacks current buy_price.
       // To prevent misleading data (Revenue becoming Profit), we set profit to 0 in fallback mode.
       // Ideally, the RPC should always be used.
-      totalProfit += 0; 
+      totalProfit += trx.totalProfit; 
     }
 
     final count = transactions.length;
@@ -69,6 +69,11 @@ class ReportRepository {
   /// Get list of transactions for a specific period
   Future<List<Transaction>> getTransactions(DateTime start, DateTime end) async {
     try {
+      // Shift filter dates by +7 hours to match Jakarta-shifted DB storage
+      // This logic must match the RPCs logic
+      final startShifted = start.add(const Duration(hours: 7));
+      final endShifted = end.add(const Duration(hours: 7));
+
       // Include admin info similar to TransactionRepository
       const selectQuery = '''
         *,
@@ -79,8 +84,8 @@ class ReportRepository {
       final response = await _supabase
           .from('transactions')
           .select(selectQuery)
-          .gte('created_at', start.toUtc().toIso8601String())
-          .lte('created_at', end.toUtc().toIso8601String())
+          .gte('created_at', startShifted.toUtc().toIso8601String())
+          .lte('created_at', endShifted.toUtc().toIso8601String())
           .order('created_at', ascending: false);
 
       final List<dynamic> data = response as List<dynamic>;
@@ -111,4 +116,5 @@ class ReportRepository {
       throw Exception('Terjadi kesalahan. Silakan coba lagi.');
     }
   }
+
 }

@@ -3,9 +3,11 @@ import 'package:flutter/material.dart' hide ConnectionState;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 // ignore: deprecated_member_use
 import 'package:flutter_riverpod/legacy.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/order_model.dart';
 import '../repositories/order_repository.dart';
 import '../../../../core/services/realtime_connection_monitor.dart';
+import 'realtime_orders_provider.dart';
 
 /// Controller for order actions (update status, cancel)
 final orderControllerProvider = AsyncNotifierProvider<OrderController, void>(() {
@@ -115,6 +117,18 @@ final ordersProvider = StreamProvider<List<Order>>((ref) {
       fetchOrders();
     }
   });
+
+  // Listen to Realtime Events (INSERT/UPDATE/DELETE)
+  // This triggers a refresh whenever the DB changes
+  final realtimeSub = ref.listen<AsyncValue<PostgresChangePayload>>(
+    realtimeOrdersStreamProvider,
+    (previous, next) {
+      next.whenData((payload) {
+        debugPrint('[ORDERS_PROVIDER] Realtime event: ${payload.eventType}, refreshing list...');
+        fetchOrders();
+      });
+    },
+  );
   
   // Start fetching (but don't block on first load)
   fetchOrders();
@@ -123,6 +137,7 @@ final ordersProvider = StreamProvider<List<Order>>((ref) {
   ref.onDispose(() {
     debugPrint('[ORDERS_PROVIDER] Disposing...');
     connectionSub.close();
+    realtimeSub.close();
     streamSub.cancel();
     controller.close();
   });

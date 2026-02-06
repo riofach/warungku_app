@@ -26,9 +26,45 @@ class Formatters {
   }
 
   /// Konversi DateTime UTC ke WIB (Asia/Jakarta, UTC+7)
+  /// Mengembalikan DateTime 'Local' (tanpa timezone) yang value-nya sudah digeser ke WIB.
+  /// Ini memastikan tampilan selalu WIB (UTC+7) terlepas dari setting timezone device.
   static DateTime toWIB(DateTime date) {
-    // Jika date sudah dalam UTC atau local, konversi ke WIB
-    return date.toUtc().add(const Duration(hours: 7));
+    // Pastikan kita mulai dari UTC
+    final utc = date.isUtc ? date : date.toUtc();
+    
+    // Tambah 7 jam untuk mendapatkan nilai waktu WIB
+    final wibValue = utc.add(const Duration(hours: 7));
+    
+    // Kembalikan sebagai DateTime tanpa flag UTC (dianggap local), 
+    // tapi dengan value jam yang sudah sesuai WIB.
+    // Trik ini memaksa DateFormat untuk menampilkan jam WIB meskipun device di UTC atau timezone lain.
+    return DateTime(
+      wibValue.year,
+      wibValue.month,
+      wibValue.day,
+      wibValue.hour,
+      wibValue.minute,
+      wibValue.second,
+    );
+  }
+
+  /// Format relative time (e.g. "2 jam yang lalu", "Baru saja")
+  static String formatRelativeTime(DateTime date) {
+    final now = DateTime.now().toUtc();
+    final dateUtc = date.isUtc ? date : date.toUtc();
+    final difference = now.difference(dateUtc);
+
+    if (difference.inDays > 7) {
+      return formatDateCompact(date);
+    } else if (difference.inDays >= 1) {
+      return '${difference.inDays} hari lalu';
+    } else if (difference.inHours >= 1) {
+      return '${difference.inHours} jam lalu';
+    } else if (difference.inMinutes >= 1) {
+      return '${difference.inMinutes} menit lalu';
+    } else {
+      return 'Baru saja';
+    }
   }
 
   /// Format DateTime to Indonesian date with time in WIB: "15 Januari 2026, 10:30"
@@ -54,25 +90,6 @@ class Formatters {
   static String formatTime(DateTime date) {
     final wibDate = toWIB(date);
     return DateFormat('HH:mm').format(wibDate);
-  }
-
-  /// Format DateTime to relative time in WIB: "5 menit yang lalu"
-  static String formatRelativeTime(DateTime date) {
-    final now = DateTime.now().toUtc().add(const Duration(hours: 7)); // WIB now
-    final wibDate = toWIB(date);
-    final difference = now.difference(wibDate);
-
-    if (difference.inDays > 7) {
-      return formatDate(date);
-    } else if (difference.inDays > 0) {
-      return '${difference.inDays} hari yang lalu';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours} jam yang lalu';
-    } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes} menit yang lalu';
-    } else {
-      return 'Baru saja';
-    }
   }
 
   /// Format stock with indicator

@@ -149,19 +149,27 @@ class Order {
     final String deliveryType = json['delivery_type']?.toString() ?? 'pickup';
     final String status = json['status']?.toString() ?? 'pending';
     
-    // Parse dates with fallback
-    DateTime createdAt;
-    DateTime updatedAt;
-    try {
-      createdAt = DateTime.parse(json['created_at']?.toString() ?? DateTime.now().toIso8601String());
-    } catch (e) {
-      createdAt = DateTime.now();
+    // Parse dates with fallback. Ensure we treat them as UTC.
+    // We assume the DB returns UTC times (e.g. "2023-10-27 10:00:00").
+    // If we parse them as Local (default behavior if no Z), we fix it to be UTC.
+    // Display logic (Formatters.toWIB) handles the conversion to WIB.
+    DateTime parseUtcDate(dynamic value) {
+      if (value == null) return DateTime.now();
+      try {
+        final str = value.toString();
+        final temp = DateTime.parse(str);
+        // If parsed as local (no Z), force it to be UTC with same values
+        if (!temp.isUtc) {
+          return DateTime.utc(temp.year, temp.month, temp.day, temp.hour, temp.minute, temp.second);
+        }
+        return temp;
+      } catch (e) {
+        return DateTime.now();
+      }
     }
-    try {
-      updatedAt = DateTime.parse(json['updated_at']?.toString() ?? DateTime.now().toIso8601String());
-    } catch (e) {
-      updatedAt = DateTime.now();
-    }
+
+    final DateTime createdAt = parseUtcDate(json['created_at']);
+    final DateTime updatedAt = parseUtcDate(json['updated_at']);
     
     return Order(
       id: id,

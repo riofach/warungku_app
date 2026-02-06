@@ -41,7 +41,8 @@ class _WarungKuAppState extends ConsumerState<WarungKuApp> with WidgetsBindingOb
     
     // Initialize connection monitor after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeConnectionMonitor();
+      // Start monitoring
+      ref.read(connectionMonitorProvider).startMonitoring();
     });
   }
 
@@ -62,39 +63,8 @@ class _WarungKuAppState extends ConsumerState<WarungKuApp> with WidgetsBindingOb
     } else if (state == AppLifecycleState.resumed) {
       debugPrint('[WARUNGKU_APP] App resumed - checking connection state');
       // Trigger a connection check when app resumes
-      _connectionMonitor?.startMonitoring();
+      ref.read(connectionMonitorProvider).startMonitoring();
     }
-  }
-
-  void _initializeConnectionMonitor() {
-    debugPrint('[WARUNGKU_APP] Initializing RealtimeConnectionMonitor...');
-    
-    // Get or create connection monitor
-    _connectionMonitor = ref.read(connectionMonitorProvider);
-    
-    // Start monitoring
-    _connectionMonitor!.startMonitoring();
-    
-    // Listen to connection state changes for global notifications
-    ref.listen<ConnectionState>(connectionStateProvider, (previous, next) {
-      if (previous != next) {
-        debugPrint('[WARUNGKU_APP] Connection state changed: $previous → $next');
-        
-        // Show snackbar notification for significant state changes
-        if (next == ConnectionState.polling && previous == ConnectionState.reconnecting) {
-          _showConnectionNotification(
-            'Mode polling aktif - Update real-time tidak tersedia',
-            Colors.orange,
-          );
-        } else if (next == ConnectionState.connected && 
-                  (previous == ConnectionState.reconnecting || previous == ConnectionState.polling)) {
-          _showConnectionNotification(
-            'Terhubung kembali - Update real-time aktif',
-            Colors.green,
-          );
-        }
-      }
-    });
   }
 
   void _showConnectionNotification(String message, Color color) {
@@ -134,6 +104,27 @@ class _WarungKuAppState extends ConsumerState<WarungKuApp> with WidgetsBindingOb
 
   @override
   Widget build(BuildContext context) {
+    // Listen to connection state changes for global notifications
+    ref.listen<ConnectionState>(connectionStateProvider, (previous, next) {
+      if (previous != next) {
+        debugPrint('[WARUNGKU_APP] Connection state changed: $previous → $next');
+        
+        // Show snackbar notification for significant state changes
+        if (next == ConnectionState.polling && previous == ConnectionState.reconnecting) {
+          _showConnectionNotification(
+            'Mode polling aktif - Update real-time tidak tersedia',
+            Colors.orange,
+          );
+        } else if (next == ConnectionState.connected && 
+                  (previous == ConnectionState.reconnecting || previous == ConnectionState.polling)) {
+          _showConnectionNotification(
+            'Terhubung kembali - Update real-time aktif',
+            Colors.green,
+          );
+        }
+      }
+    });
+
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(

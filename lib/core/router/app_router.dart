@@ -9,6 +9,7 @@ import '../../features/orders/presentation/screens/orders_screen.dart';
 import '../../features/orders/presentation/screens/order_detail_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/settings/presentation/screens/operating_hours_screen.dart';
+import '../../features/settings/presentation/screens/delivery_settings_screen.dart';
 import '../../features/inventory/presentation/screens/items_screen.dart';
 import '../../features/inventory/presentation/screens/item_form_screen.dart';
 import '../../features/inventory/presentation/screens/categories_screen.dart';
@@ -33,6 +34,7 @@ class AppRoutes {
   static const String orderDetail = '/orders/detail';
   static const String settings = '/settings';
   static const String settingsOperatingHours = '/settings/operating-hours'; // Story 8.2
+  static const String settingsDelivery = '/settings/delivery'; // Story 8.3
   static const String settingsGeneral = '/settings/general'; // Story 8.3
   static const String items = '/items';
   static const String itemAdd = '/items/add';
@@ -100,6 +102,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppRoutes.settingsOperatingHours,
             builder: (context, state) => const OperatingHoursScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.settingsDelivery,
+            builder: (context, state) => const DeliverySettingsScreen(),
           ),
           GoRoute(
             path: AppRoutes.reports,

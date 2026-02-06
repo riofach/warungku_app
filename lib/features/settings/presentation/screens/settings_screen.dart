@@ -80,14 +80,9 @@ class SettingsScreen extends ConsumerWidget {
           ),
           SettingsTile(
             icon: Icons.settings_outlined,
-            title: 'Pengaturan Lainnya',
-            subtitle: 'WhatsApp, Delivery, dll',
-            onTap: () {
-              // Placeholder for Story 8.3
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Fitur akan datang: Pengaturan Lainnya')),
-              );
-            },
+            title: 'Delivery & WhatsApp',
+            subtitle: 'Atur pengiriman & kontak',
+            onTap: () => context.push(AppRoutes.settingsDelivery),
           ),
 
           // Admin Management section (Owner only)

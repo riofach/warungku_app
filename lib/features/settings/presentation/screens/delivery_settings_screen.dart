@@ -19,6 +19,8 @@ class _DeliverySettingsScreenState extends ConsumerState<DeliverySettingsScreen>
   bool _isDeliveryEnabled = false;
   bool _isInitialized = false;
 
+  bool _isSaving = false;
+
   @override
   void dispose() {
     _phoneController.dispose();
@@ -103,7 +105,18 @@ class _DeliverySettingsScreenState extends ConsumerState<DeliverySettingsScreen>
                             _isDeliveryEnabled = value;
                           });
                           // Call provider to update DB immediately
-                          ref.read(deliverySettingsProvider.notifier).updateDeliveryStatus(value).catchError((e) {
+                          ref.read(deliverySettingsProvider.notifier).updateDeliveryStatus(value).then((_) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).clearSnackBars();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(value ? 'Delivery Aktif' : 'Delivery Nonaktif'),
+                                  backgroundColor: value ? AppColors.success : Colors.grey.shade700,
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                            }
+                          }).catchError((e) {
                              if (mounted) {
                                ScaffoldMessenger.of(context).showSnackBar(
                                  SnackBar(content: Text('Gagal mengubah status: $e')),
@@ -162,26 +175,36 @@ class _DeliverySettingsScreenState extends ConsumerState<DeliverySettingsScreen>
                 
                 const SizedBox(height: AppSpacing.xxl),
 
-                // Save Button
+                    // Save Button
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: _saveSettings,
+                    onPressed: _isSaving ? null : _saveSettings,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
+                      disabledBackgroundColor: AppColors.primary.withOpacity(0.6),
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: const Text(
-                      'Simpan',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
+                    child: _isSaving
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Text(
+                            'Simpan',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
                   ),
                 ),
               ],
@@ -205,7 +228,7 @@ class _DeliverySettingsScreenState extends ConsumerState<DeliverySettingsScreen>
     );
   }
 
-  void _saveSettings() {
+  Future<void> _saveSettings() async {
     final number = _phoneController.text.trim();
 
     // Validation
@@ -229,11 +252,17 @@ class _DeliverySettingsScreenState extends ConsumerState<DeliverySettingsScreen>
       return;
     }
 
-    // Save - saves both to be sure, but user knows toggle is immediate
-    ref.read(deliverySettingsProvider.notifier).saveSettings(
-      isEnabled: _isDeliveryEnabled,
-      number: number,
-    ).then((_) {
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      // Save - saves both to be sure, but user knows toggle is immediate
+      await ref.read(deliverySettingsProvider.notifier).saveSettings(
+        isEnabled: _isDeliveryEnabled,
+        number: number,
+      );
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -243,8 +272,8 @@ class _DeliverySettingsScreenState extends ConsumerState<DeliverySettingsScreen>
         );
         Navigator.pop(context);
       }
-    }).catchError((error) {
-       if (mounted) {
+    } catch (error) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Gagal menyimpan: $error'),
@@ -252,6 +281,12 @@ class _DeliverySettingsScreenState extends ConsumerState<DeliverySettingsScreen>
           ),
         );
       }
-    });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
   }
 }

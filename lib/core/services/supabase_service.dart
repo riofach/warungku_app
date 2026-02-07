@@ -10,6 +10,12 @@ class SupabaseService {
 
   static SupabaseClient get client => Supabase.instance.client;
 
+  /// Get Supabase URL from env
+  static String get url => dotenv.env['SUPABASE_URL'] ?? '';
+
+  /// Get Supabase Anon Key from env
+  static String get anonKey => dotenv.env['SUPABASE_ANON_KEY'] ?? '';
+
   /// Initialize Supabase connection
   static Future<void> initialize() async {
     await dotenv.load(fileName: '.env');

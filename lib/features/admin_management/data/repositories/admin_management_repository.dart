@@ -47,36 +47,49 @@ class AdminManagementRepository {
         return AuthResult.error('Hanya owner yang dapat menambah admin');
       }
 
-      // Step 1: Create user in Supabase Auth
-      // NOTE: This will replace the current session with the new user's session
-      final response = await SupabaseService.client.auth.signUp(
-        email: email,
-        password: password,
-        data: {
-          'name': name,
-          'role': 'admin',
-        },
+      // Step 1: Create user in Supabase Auth using a temporary client
+      // This prevents the current session (owner) from being replaced by the new user
+      final tempClient = SupabaseClient(
+        SupabaseService.url,
+        SupabaseService.anonKey,
+        authOptions: const AuthClientOptions(
+          authFlowType: AuthFlowType.implicit,
+        ),
       );
 
-      if (response.user == null) {
+      User? newUser;
+
+      try {
+        final response = await tempClient.auth.signUp(
+          email: email,
+          password: password,
+          data: {
+            'name': name,
+            'role': 'admin',
+          },
+        );
+        newUser = response.user;
+      } finally {
+        // Always dispose the temporary client
+        await tempClient.dispose();
+      }
+
+      if (newUser == null) {
         return AuthResult.error('Gagal membuat akun admin');
       }
 
-      // Step 2: Insert into users table
+      // Step 2: Insert into users table using the MAIN client (Owner)
+      // We assume the Owner has RLS permissions to insert into users table for other users
       await SupabaseService.client.from('users').insert({
-        'id': response.user!.id,
+        'id': newUser.id,
         'email': email,
         'name': name,
         'role': 'admin',
         'email_verified_at': DateTime.now().toIso8601String(),
       });
-
-      // HIGH-1 FIX: Sign out the newly created admin to clear their session
-      // The owner will need to re-login, but this prevents confusing state
-      await SupabaseService.client.auth.signOut();
-
+      
       return AuthResult.successWithMessage(
-        'Admin berhasil ditambahkan. Silakan login kembali.',
+        'Admin berhasil ditambahkan.',
       );
     } catch (e) {
       // Handle specific Supabase errors

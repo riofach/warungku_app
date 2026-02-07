@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
+import '../../../../core/services/supabase_service.dart';
 import '../models/admin_user.dart';
 import '../repositories/auth_repository.dart';
 
@@ -19,40 +20,51 @@ final supabaseAuthStateProvider = StreamProvider<supabase.AuthState>((ref) {
 /// Provider for current user - REACTIVE to Supabase auth stream
 /// Returns AdminUser if logged in, null otherwise
 /// Uses Supabase stream for reliable updates after login/logout
-final currentUserProvider = Provider<AdminUser?>((ref) {
-  // Watch Supabase auth stream for reliable updates
-  final supabaseAuthState = ref.watch(supabaseAuthStateProvider);
+/// Also fetches latest role from public.users table
+final currentUserProvider = StreamProvider<AdminUser?>((ref) async* {
+  // Watch auth repository for reliable updates
+  final authRepo = ref.watch(authRepositoryProvider);
   
-  return supabaseAuthState.when(
-    data: (authState) {
-      // Get user from session (most reliable)
-      final user = authState.session?.user;
-      if (user == null) {
-        debugPrint('currentUserProvider: No user in session');
-        return null;
+  await for (final authState in authRepo.authStateChanges) {
+    final user = authState.session?.user;
+    if (user == null) {
+      debugPrint('currentUserProvider: No user in session');
+      yield null;
+      continue;
+    }
+
+    // 1. Create user from metadata (fast)
+    final adminUser = AdminUser.fromSupabaseUser(user);
+    yield adminUser;
+
+    // 2. Fetch latest role from database (async)
+    try {
+      final supabase = SupabaseService.client;
+      final data = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+      
+      final role = data['role'] as String?;
+      if (role != null && role != adminUser.role) {
+        debugPrint('currentUserProvider: Updated role from DB: $role');
+        yield adminUser.copyWith(role: role);
+      } else {
+        debugPrint('currentUserProvider: Role from DB matches metadata: ${adminUser.role}');
       }
-      final adminUser = AdminUser.fromSupabaseUser(user);
-      debugPrint('currentUserProvider: User loaded - ${adminUser.email}, role: ${adminUser.role}');
-      return adminUser;
-    },
-    loading: () {
-      // During initial load, try to get from current session
-      debugPrint('currentUserProvider: Loading, checking current session...');
-      final authRepo = ref.read(authRepositoryProvider);
-      return authRepo.getCurrentUser();
-    },
-    error: (error, stack) {
-      debugPrint('currentUserProvider: Error - $error');
-      return null;
-    },
-  );
+    } catch (e) {
+      debugPrint('currentUserProvider: Error fetching role from DB: $e');
+      // Keep yielding the metadata-based user
+    }
+  }
 });
 
 /// Provider for auth state
 /// Returns true if user is authenticated
 final isAuthenticatedProvider = Provider<bool>((ref) {
-  final currentUser = ref.watch(currentUserProvider);
-  return currentUser != null;
+  final currentUserAsync = ref.watch(currentUserProvider);
+  return currentUserAsync.asData?.value != null;
 });
 
 /// Auth status enum for UI

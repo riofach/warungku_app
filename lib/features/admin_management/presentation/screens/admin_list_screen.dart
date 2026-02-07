@@ -36,7 +36,8 @@ class _AdminListScreenState extends ConsumerState<AdminListScreen> {
   @override
   Widget build(BuildContext context) {
     final adminListState = ref.watch(adminListNotifierProvider);
-    final currentUser = ref.watch(currentUserProvider);
+    final currentUserAsync = ref.watch(currentUserProvider);
+    final currentUser = currentUserAsync.asData?.value;
 
     return Scaffold(
       appBar: AppBar(

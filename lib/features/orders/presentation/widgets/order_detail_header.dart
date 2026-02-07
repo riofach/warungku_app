@@ -26,7 +26,7 @@ class OrderDetailHeader extends StatelessWidget {
                   order.code,
                   style: AppTypography.headlineMedium.copyWith(
                     color: AppColors.primary,
-                    fontSize: 24,
+                    fontSize: 18,
                   ),
                   overflow: TextOverflow.ellipsis, // Add ellipsis for overflow
                 ),

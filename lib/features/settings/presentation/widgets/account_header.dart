@@ -9,7 +9,8 @@ class AccountHeader extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final currentUser = ref.watch(currentUserProvider);
+    final currentUserAsync = ref.watch(currentUserProvider);
+    final currentUser = currentUserAsync.asData?.value;
     final email = currentUser?.email ?? 'admin';
     final name = currentUser?.name ?? 'Admin Warung';
 

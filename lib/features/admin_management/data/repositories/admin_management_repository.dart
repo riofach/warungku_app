@@ -68,6 +68,7 @@ class AdminManagementRepository {
         'email': email,
         'name': name,
         'role': 'admin',
+        'email_verified_at': DateTime.now().toIso8601String(),
       });
 
       // HIGH-1 FIX: Sign out the newly created admin to clear their session
@@ -92,7 +93,16 @@ class AdminManagementRepository {
       }
       
       if (errorMessage.contains('password')) {
-        return AuthResult.error('Password minimal 8 karakter');
+        // Check if it's specifically a length issue
+        if (errorMessage.contains('length') || 
+            errorMessage.contains('short') || 
+            errorMessage.contains('at least 6 characters') ||
+            errorMessage.contains('at least 8 characters')) {
+           return AuthResult.error('Password minimal 8 karakter');
+        }
+        // Otherwise return the original error message to help debug
+        // Common issues: weak password, compromise detection, etc.
+        return AuthResult.error('Masalah pada password: $errorMessage');
       }
 
       return AuthResult.error('Gagal membuat admin: ${e.toString()}');

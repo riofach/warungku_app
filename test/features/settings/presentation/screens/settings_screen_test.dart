@@ -51,9 +51,9 @@ void main() {
     when(() => mockUser.role).thenReturn(isOwner ? 'owner' : 'admin');
 
     return ProviderScope(
-      overrides: [
-        currentUserProvider.overrideWithValue(mockUser),
-        orderRepositoryProvider.overrideWithValue(mockOrderRepository),
+        overrides: [
+          currentUserProvider.overrideWith((ref) => Stream.value(mockUser)),
+          orderRepositoryProvider.overrideWithValue(mockOrderRepository),
         authNotifierProvider.overrideWith(() {
           final notifier = MockAuthNotifier();
           // We can't easily spy on the notifier here, so we'll rely on the side effects or return value if needed
@@ -207,7 +207,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          currentUserProvider.overrideWithValue(mockUser),
+          currentUserProvider.overrideWith((ref) => Stream.value(mockUser)),
           orderRepositoryProvider.overrideWithValue(mockOrderRepository),
           authNotifierProvider.overrideWith(() => MockAuthNotifierWithTracker(signOutTracker)),
         ],

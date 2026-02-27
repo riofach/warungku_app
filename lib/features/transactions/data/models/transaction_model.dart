@@ -45,14 +45,16 @@ class TransactionAdmin {
 }
 
 /// Transaction item model for POS transactions
+/// DB schema: id, transaction_id, item_id, buy_price, price (sell_price), quantity, subtotal
+/// item_name is NOT a DB column — comes from RPC JOIN on items table
 class TransactionItem {
   final String id;
   final String transactionId;
   final String? itemId;
-  final String itemName;
+  final String? itemName; // From RPC JOIN on items table, not a DB column
   final int quantity;
-  final int buyPrice;
-  final int sellPrice;
+  final int buyPrice; // DB column: buy_price
+  final int price; // DB column: price (= sell price)
   final int subtotal;
   final DateTime createdAt;
 
@@ -60,23 +62,26 @@ class TransactionItem {
     required this.id,
     required this.transactionId,
     this.itemId,
-    required this.itemName,
+    this.itemName,
     required this.quantity,
     required this.buyPrice,
-    required this.sellPrice,
+    required this.price,
     required this.subtotal,
     required this.createdAt,
   });
+
+  /// Backward-compat getter
+  int get sellPrice => price;
 
   factory TransactionItem.fromJson(Map<String, dynamic> json) {
     return TransactionItem(
       id: json['id'] as String,
       transactionId: json['transaction_id'] as String,
       itemId: json['item_id'] as String?,
-      itemName: json['item_name'] as String? ?? 'Unknown Item',
+      itemName: json['item_name'] as String?,
       quantity: json['quantity'] as int? ?? 1,
       buyPrice: json['buy_price'] as int? ?? 0,
-      sellPrice: json['sell_price'] as int? ?? 0,
+      price: (json['price'] as int?) ?? (json['sell_price'] as int?) ?? 0,
       subtotal: json['subtotal'] as int? ?? 0,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
@@ -89,31 +94,34 @@ class TransactionItem {
       'id': id,
       'transaction_id': transactionId,
       'item_id': itemId,
-      'item_name': itemName,
-      'quantity': quantity,
       'buy_price': buyPrice,
-      'sell_price': sellPrice,
+      'price': price,
+      'quantity': quantity,
       'subtotal': subtotal,
       'created_at': createdAt.toIso8601String(),
     };
   }
 
-  /// Calculate profit for this item
-  int get profit => (sellPrice - buyPrice) * quantity;
+  /// Profit for this item = (sell - buy) * qty
+  int get profit => (price - buyPrice) * quantity;
 
   @override
-  String toString() => 'TransactionItem(name: $itemName, qty: $quantity)';
+  String toString() =>
+      'TransactionItem(name: ${itemName ?? itemId}, qty: $quantity)';
 }
 
 /// Transaction model for POS transactions at warung
 /// Includes admin tracking for FR5
+/// Transaction model — DB schema follows web (Laravel) layout
+/// transactions table: id, code, admin_id, payment_method, cash_received, change, total
+/// Note: DB column is 'change' not 'change_amount'
 class Transaction {
   final String id;
   final String code;
   final String? adminId;
   final String paymentMethod;
   final int? cashReceived;
-  final int? changeAmount;
+  final int? changeAmount; // Maps to DB column 'change'
   final int total;
   final DateTime createdAt;
 
@@ -156,7 +164,8 @@ class Transaction {
       adminId: json['admin_id'] as String?,
       paymentMethod: json['payment_method'] as String? ?? 'cash',
       cashReceived: json['cash_received'] as int?,
-      changeAmount: json['change_amount'] as int?,
+      // DB column is 'change', RPC response uses 'change_amount' — handle both
+      changeAmount: (json['change_amount'] as int?) ?? (json['change'] as int?),
       total: json['total'] as int? ?? 0,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
@@ -173,7 +182,7 @@ class Transaction {
       'admin_id': adminId,
       'payment_method': paymentMethod,
       'cash_received': cashReceived,
-      'change_amount': changeAmount,
+      'change': changeAmount, // DB column name
       'total': total,
       'created_at': createdAt.toIso8601String(),
     };

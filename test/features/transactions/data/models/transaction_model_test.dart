@@ -88,10 +88,9 @@ void main() {
         'id': 'item-123',
         'transaction_id': 'trx-123',
         'item_id': 'product-123',
-        'item_name': 'Indomie Goreng',
+        'item_name': 'Indomie Goreng', // from RPC join, not direct column
         'quantity': 2,
-        'buy_price': 2000,
-        'sell_price': 3000,
+        'price': 3000, // DB column 'price' (sell price)
         'subtotal': 6000,
         'created_at': '2026-01-20T10:00:00Z',
       };
@@ -103,24 +102,25 @@ void main() {
       expect(item.itemId, 'product-123');
       expect(item.itemName, 'Indomie Goreng');
       expect(item.quantity, 2);
-      expect(item.buyPrice, 2000);
-      expect(item.sellPrice, 3000);
+      expect(item.price, 3000);
+      expect(item.sellPrice, 3000); // backward-compat getter
+      expect(item.buyPrice, 0); // not in DB schema
       expect(item.subtotal, 6000);
     });
 
-    test('should calculate profit correctly', () {
+    test('profit is calculated correctly with buy_price', () {
       final item = TransactionItem(
         id: 'item-123',
         transactionId: 'trx-123',
         itemName: 'Indomie Goreng',
         quantity: 5,
         buyPrice: 2000,
-        sellPrice: 3000,
+        price: 3000,
         subtotal: 15000,
         createdAt: DateTime.now(),
       );
 
-      // Profit = (sellPrice - buyPrice) * quantity = (3000 - 2000) * 5 = 5000
+      // Profit = (price - buy_price) * quantity = (3000 - 2000) * 5 = 5000
       expect(item.profit, 5000);
     });
   });
@@ -253,7 +253,7 @@ void main() {
             itemName: 'Item 1',
             quantity: 2,
             buyPrice: 1000,
-            sellPrice: 2000,
+            price: 2000,
             subtotal: 4000,
             createdAt: DateTime.now(),
           ),
@@ -263,7 +263,7 @@ void main() {
             itemName: 'Item 2',
             quantity: 3,
             buyPrice: 3000,
-            sellPrice: 5000,
+            price: 5000,
             subtotal: 15000,
             createdAt: DateTime.now(),
           ),

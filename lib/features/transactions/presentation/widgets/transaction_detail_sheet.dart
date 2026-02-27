@@ -246,11 +246,11 @@ class ItemRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  item.itemName,
+                  item.itemName ?? (item.itemId ?? 'Item'),
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 Text(
-                  '${item.quantity} x ${_formatCurrency(item.sellPrice)}',
+                  '${item.quantity} x ${_formatCurrency(item.price)}',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppColors.textSecondary,
                   ),

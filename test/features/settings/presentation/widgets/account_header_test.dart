@@ -19,7 +19,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          currentUserProvider.overrideWithValue(testUser),
+          currentUserProvider.overrideWithValue(AsyncValue.data(testUser)),
         ],
         child: const MaterialApp(
           home: Scaffold(

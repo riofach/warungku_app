@@ -10,9 +10,11 @@ import '../../../../core/services/realtime_connection_monitor.dart';
 import 'realtime_orders_provider.dart';
 
 /// Controller for order actions (update status, cancel)
-final orderControllerProvider = AsyncNotifierProvider<OrderController, void>(() {
-  return OrderController();
-});
+final orderControllerProvider = AsyncNotifierProvider<OrderController, void>(
+  () {
+    return OrderController();
+  },
+);
 
 class OrderController extends AsyncNotifier<void> {
   @override
@@ -47,31 +49,35 @@ final ordersErrorProvider = StateProvider<String?>((ref) => null);
 /// Enhanced with graceful error handling and persistent cache
 final ordersProvider = StreamProvider<List<Order>>((ref) {
   final repository = ref.watch(orderRepositoryProvider);
-  
+
   // Get cache and state refs
   final cachedOrders = ref.read(ordersCacheProvider);
   final isFirstLoad = ref.read(ordersInitialLoadProvider);
-  
+
   // Create a stream controller
   final controller = StreamController<List<Order>>.broadcast();
-  
+
   // Emit cached data immediately if available (prevents empty state flash)
   if (cachedOrders.isNotEmpty) {
-    debugPrint('[ORDERS_PROVIDER] Emitting cached data immediately: ${cachedOrders.length} orders');
+    debugPrint(
+      '[ORDERS_PROVIDER] Emitting cached data immediately: ${cachedOrders.length} orders',
+    );
     controller.add(cachedOrders);
   }
-  
+
   // Function to fetch orders with error handling
   Future<void> fetchOrders() async {
     try {
-      debugPrint('[ORDERS_PROVIDER] Fetching orders... (firstLoad: $isFirstLoad)');
+      debugPrint(
+        '[ORDERS_PROVIDER] Fetching orders... (firstLoad: $isFirstLoad)',
+      );
       final orders = await repository.getOrders();
-      
+
       // Update cache
       ref.read(ordersCacheProvider.notifier).state = orders;
       ref.read(ordersInitialLoadProvider.notifier).state = false;
       ref.read(ordersErrorProvider.notifier).state = null;
-      
+
       if (!controller.isClosed) {
         controller.add(orders);
         debugPrint('[ORDERS_PROVIDER] Fetch success: ${orders.length} orders');
@@ -80,7 +86,7 @@ final ordersProvider = StreamProvider<List<Order>>((ref) {
       debugPrint('[ORDERS_PROVIDER] Fetch error: $e');
       ref.read(ordersErrorProvider.notifier).state = e.toString();
       ref.read(ordersInitialLoadProvider.notifier).state = false;
-      
+
       // If we have cached data, emit it (don't show error)
       if (cachedOrders.isNotEmpty && !controller.isClosed) {
         debugPrint('[ORDERS_PROVIDER] Using cached data due to error');
@@ -92,21 +98,21 @@ final ordersProvider = StreamProvider<List<Order>>((ref) {
       }
     }
   }
-  
+
   // Listen to connection state changes (for transitions)
-  final connectionSub = ref.listen<ConnectionState>(
-    connectionStateProvider,
-    (previous, next) {
-      debugPrint('[ORDERS_PROVIDER] Connection state: $previous → $next');
-      
-      // When connection is restored, refresh data
-      if (previous == ConnectionState.polling && 
-          next == ConnectionState.connected) {
-        debugPrint('[ORDERS_PROVIDER] Connection restored, refreshing...');
-        fetchOrders();
-      }
-    },
-  );
+  final connectionSub = ref.listen<ConnectionState>(connectionStateProvider, (
+    previous,
+    next,
+  ) {
+    debugPrint('[ORDERS_PROVIDER] Connection state: $previous → $next');
+
+    // When connection is restored, refresh data
+    if (previous == ConnectionState.polling &&
+        next == ConnectionState.connected) {
+      debugPrint('[ORDERS_PROVIDER] Connection restored, refreshing...');
+      fetchOrders();
+    }
+  });
 
   // Listen to the connection stream for polling ticks
   // The stream emits events even if the state value doesn't change
@@ -118,36 +124,52 @@ final ordersProvider = StreamProvider<List<Order>>((ref) {
     }
   });
 
+  // Periodic fallback polling every 30 seconds
+  // Ensures list stays fresh even when Supabase Realtime events are missed
+  // (e.g., RLS issue, background connection drop, silent failure)
+  final pollingTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+    if (!controller.isClosed) {
+      debugPrint('[ORDERS_PROVIDER] Periodic 30s poll — refreshing orders...');
+      fetchOrders();
+    }
+  });
+
   // Listen to Realtime Events (INSERT/UPDATE/DELETE)
   // This triggers a refresh whenever the DB changes
   final realtimeSub = ref.listen<AsyncValue<PostgresChangePayload>>(
     realtimeOrdersStreamProvider,
     (previous, next) {
       next.whenData((payload) {
-        debugPrint('[ORDERS_PROVIDER] Realtime event: ${payload.eventType}, refreshing list...');
+        debugPrint(
+          '[ORDERS_PROVIDER] Realtime event: ${payload.eventType}, refreshing list...',
+        );
         fetchOrders();
       });
     },
   );
-  
+
   // Start fetching (but don't block on first load)
   fetchOrders();
-  
+
   // Cleanup
   ref.onDispose(() {
     debugPrint('[ORDERS_PROVIDER] Disposing...');
     connectionSub.close();
     realtimeSub.close();
     streamSub.cancel();
+    pollingTimer.cancel();
     controller.close();
   });
-  
+
   return controller.stream;
 });
 
 /// Provider to fetch a single order by ID
 /// Enhanced with error handling
-final orderDetailProvider = FutureProvider.autoDispose.family<Order, String>((ref, orderId) async {
+final orderDetailProvider = FutureProvider.autoDispose.family<Order, String>((
+  ref,
+  orderId,
+) async {
   final repository = ref.watch(orderRepositoryProvider);
   try {
     return await repository.getOrderById(orderId);

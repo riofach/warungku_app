@@ -81,7 +81,9 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
 
     // Listen to connection state changes
     ref.listen<ConnectionState>(connectionStateProvider, (previous, next) {
-      debugPrint('OrdersScreen: Connection state changed from $previous to $next');
+      debugPrint(
+        'OrdersScreen: Connection state changed from $previous to $next',
+      );
     });
 
     final ordersAsync = ref.watch(ordersProvider);
@@ -117,76 +119,84 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
           ],
         ),
       ),
-      body: RefreshIndicator(
-        onRefresh: _handleRefresh,
-        displacement: 40,
-        color: AppColors.primary,
-        backgroundColor: Colors.white,
-        child: ordersAsync.when(
-          data: (orders) {
+      body: ordersAsync.when(
+        data: (orders) {
+          return TabBarView(
+            controller: _tabController,
+            children: [
+              _buildOrderList(orders, [OrderStatus.pending, OrderStatus.paid]),
+              _buildOrderList(orders, [
+                OrderStatus.processing,
+                OrderStatus.ready,
+                OrderStatus.delivered,
+              ]),
+              _buildOrderList(orders, [OrderStatus.completed]),
+              _buildOrderList(orders, [
+                OrderStatus.cancelled,
+                OrderStatus.failed,
+              ]),
+            ],
+          );
+        },
+        loading: () {
+          // If we have cached data, show it while loading
+          if (cachedOrders.isNotEmpty) {
+            debugPrint(
+              'OrdersScreen: Loading state with cached data: ${cachedOrders.length} orders',
+            );
             return TabBarView(
               controller: _tabController,
               children: [
-                _buildOrderList(orders, [OrderStatus.pending, OrderStatus.paid]),
-                _buildOrderList(orders, [
+                _buildOrderList(cachedOrders, [
+                  OrderStatus.pending,
+                  OrderStatus.paid,
+                ]),
+                _buildOrderList(cachedOrders, [
                   OrderStatus.processing,
                   OrderStatus.ready,
                   OrderStatus.delivered,
                 ]),
-                _buildOrderList(orders, [OrderStatus.completed]),
-                _buildOrderList(orders, [
+                _buildOrderList(cachedOrders, [OrderStatus.completed]),
+                _buildOrderList(cachedOrders, [
                   OrderStatus.cancelled,
                   OrderStatus.failed,
                 ]),
               ],
             );
-          },
-          loading: () {
-            // If we have cached data, show it while loading
-            if (cachedOrders.isNotEmpty) {
-              debugPrint('OrdersScreen: Loading state with cached data: ${cachedOrders.length} orders');
-              return TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildOrderList(cachedOrders, [OrderStatus.pending, OrderStatus.paid]),
-                  _buildOrderList(cachedOrders, [
-                    OrderStatus.processing,
-                    OrderStatus.ready,
-                    OrderStatus.delivered,
-                  ]),
-                  _buildOrderList(cachedOrders, [OrderStatus.completed]),
-                  _buildOrderList(cachedOrders, [
-                    OrderStatus.cancelled,
-                    OrderStatus.failed,
-                  ]),
-                ],
-              );
-            }
-            return const Center(child: LoadingWidget());
-          },
-          error: (error, stack) {
-            // If we have cached data, show it instead of error
-            if (cachedOrders.isNotEmpty) {
-              debugPrint('OrdersScreen: Error state but showing cached data: ${cachedOrders.length} orders');
-              return TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildOrderList(cachedOrders, [OrderStatus.pending, OrderStatus.paid]),
-                  _buildOrderList(cachedOrders, [
-                    OrderStatus.processing,
-                    OrderStatus.ready,
-                    OrderStatus.delivered,
-                  ]),
-                  _buildOrderList(cachedOrders, [OrderStatus.completed]),
-                  _buildOrderList(cachedOrders, [
-                    OrderStatus.cancelled,
-                    OrderStatus.failed,
-                  ]),
-                ],
-              );
-            }
-            // No cache, show error with refresh capability
-            return Stack(
+          }
+          return const Center(child: LoadingWidget());
+        },
+        error: (error, stack) {
+          // If we have cached data, show it instead of error
+          if (cachedOrders.isNotEmpty) {
+            debugPrint(
+              'OrdersScreen: Error state but showing cached data: ${cachedOrders.length} orders',
+            );
+            return TabBarView(
+              controller: _tabController,
+              children: [
+                _buildOrderList(cachedOrders, [
+                  OrderStatus.pending,
+                  OrderStatus.paid,
+                ]),
+                _buildOrderList(cachedOrders, [
+                  OrderStatus.processing,
+                  OrderStatus.ready,
+                  OrderStatus.delivered,
+                ]),
+                _buildOrderList(cachedOrders, [OrderStatus.completed]),
+                _buildOrderList(cachedOrders, [
+                  OrderStatus.cancelled,
+                  OrderStatus.failed,
+                ]),
+              ],
+            );
+          }
+          // No cache, show error with refresh capability
+          return RefreshIndicator(
+            onRefresh: _handleRefresh,
+            color: AppColors.primary,
+            child: Stack(
               children: [
                 ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
@@ -199,9 +209,9 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
                   ),
                 ),
               ],
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -212,38 +222,48 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
         .toList();
 
     if (filteredOrders.isEmpty) {
-      // Bungkus EmptyStateWidget dalam Stack dengan ListView
-      // agar tetap bisa di-refresh (pull-to-refresh)
-      return Stack(
-        children: [
-          ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            children: const [],
-          ),
-          const Positioned.fill(
-            child: EmptyStateWidget(
-              title: 'Belum ada pesanan',
-              subtitle: 'Pesanan dengan status ini belum tersedia',
-              icon: Icons.assignment_outlined,
+      // Wrapped in RefreshIndicator so pull-to-refresh works on empty screens too
+      return RefreshIndicator(
+        onRefresh: _handleRefresh,
+        color: AppColors.primary,
+        backgroundColor: Colors.white,
+        child: Stack(
+          children: [
+            ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: const [],
             ),
-          ),
-        ],
+            const Positioned.fill(
+              child: EmptyStateWidget(
+                title: 'Belum ada pesanan',
+                subtitle: 'Pesanan dengan status ini belum tersedia',
+                icon: Icons.assignment_outlined,
+              ),
+            ),
+          ],
+        ),
       );
     }
 
-    return ListView.builder(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(AppSpacing.md),
-      itemCount: filteredOrders.length,
-      itemBuilder: (context, index) {
-        final order = filteredOrders[index];
-        return OrderCard(
-          order: order,
-          onTap: () {
-            context.push('${AppRoutes.orderDetail}/${order.id}');
-          },
-        );
-      },
+    return RefreshIndicator(
+      onRefresh: _handleRefresh,
+      displacement: 40,
+      color: AppColors.primary,
+      backgroundColor: Colors.white,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(AppSpacing.md),
+        itemCount: filteredOrders.length,
+        itemBuilder: (context, index) {
+          final order = filteredOrders[index];
+          return OrderCard(
+            order: order,
+            onTap: () {
+              context.push('${AppRoutes.orderDetail}/${order.id}');
+            },
+          );
+        },
+      ),
     );
   }
 }

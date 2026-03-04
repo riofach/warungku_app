@@ -8,6 +8,11 @@ import '../models/order_model.dart';
 import '../repositories/order_repository.dart';
 import '../../../../core/services/realtime_connection_monitor.dart';
 import 'realtime_orders_provider.dart';
+import '../../../../features/dashboard/data/providers/new_orders_provider.dart';
+
+/// App startup timestamp — orders created before this time are IGNORED
+/// for notifications (avoids showing old orders as 'new' on app restart).
+final _appStartTime = DateTime.now();
 
 /// Controller for order actions (update status, cancel)
 final orderControllerProvider = AsyncNotifierProvider<OrderController, void>(
@@ -72,6 +77,37 @@ final ordersProvider = StreamProvider<List<Order>>((ref) {
         '[ORDERS_PROVIDER] Fetching orders... (firstLoad: $isFirstLoad)',
       );
       final orders = await repository.getOrders();
+
+      // =====================================================================
+      // NOTIFICATION DETECTION: Find newly inserted orders vs previous cache.
+      // This is the PRIMARY notification trigger since Supabase Realtime may
+      // not be configured. The 30s poll is 100% reliable.
+      // =====================================================================
+      final previousIds = ref
+          .read(ordersCacheProvider)
+          .map((o) => o.id)
+          .toSet();
+      final newOrders = orders.where((o) {
+        // Must be a new ID (not in previous fetch)
+        if (previousIds.isNotEmpty && previousIds.contains(o.id)) return false;
+        // Must be pending or paid (active new order)
+        if (o.status != OrderStatus.pending && o.status != OrderStatus.paid)
+          return false;
+        // Must have been created AFTER app startup (ignore historical orders)
+        if (o.createdAt.isBefore(
+          _appStartTime.subtract(const Duration(minutes: 5)),
+        ))
+          return false;
+        return true;
+      }).toList();
+
+      for (final newOrder in newOrders) {
+        debugPrint(
+          '[ORDERS_PROVIDER] 🔔 New order detected via poll: ${newOrder.code}',
+        );
+        emitNewOrderNotification(newOrder);
+      }
+      // =====================================================================
 
       // Update cache
       ref.read(ordersCacheProvider.notifier).state = orders;

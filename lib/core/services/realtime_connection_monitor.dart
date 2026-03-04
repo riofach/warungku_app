@@ -56,13 +56,15 @@ class RealtimeConnectionMonitor {
   static const int fallbackIntervalSeconds = 30;
 
   /// Stream controller for connection state changes
-  final _connectionStateController = StreamController<ConnectionState>.broadcast();
+  final _connectionStateController =
+      StreamController<ConnectionState>.broadcast();
 
   RealtimeConnectionMonitor(this._ref, {SupabaseClient? supabase})
-      : _supabase = supabase ?? Supabase.instance.client;
+    : _supabase = supabase ?? Supabase.instance.client;
 
   /// Stream of connection state changes
-  Stream<ConnectionState> get connectionStateStream => _connectionStateController.stream;
+  Stream<ConnectionState> get connectionStateStream =>
+      _connectionStateController.stream;
 
   /// Current connection state
   ConnectionState get currentState => _ref.read(connectionStateProvider);
@@ -164,7 +166,7 @@ class RealtimeConnectionMonitor {
     if (!_isMonitoring) return;
 
     final current = _ref.read(connectionStateProvider);
-    
+
     // If already in fallback mode, don't do anything
     if (current == ConnectionState.polling) {
       return;
@@ -186,7 +188,9 @@ class RealtimeConnectionMonitor {
     if (!_isMonitoring) return;
 
     if (_retryCount >= maxRetries) {
-      debugPrint('[CONNECTION_MONITOR] Max retries ($maxRetries) reached, switching to fallback');
+      debugPrint(
+        '[CONNECTION_MONITOR] Max retries ($maxRetries) reached, switching to fallback',
+      );
       _startFallbackPolling();
       return;
     }
@@ -195,7 +199,9 @@ class RealtimeConnectionMonitor {
     final delayMs = calculateRetryDelay(_retryCount);
     final delaySeconds = (delayMs / 1000).ceil();
 
-    debugPrint('[CONNECTION_MONITOR] Reconnect attempt ${_retryCount + 1}/$maxRetries in ${delaySeconds}s');
+    debugPrint(
+      '[CONNECTION_MONITOR] Reconnect attempt ${_retryCount + 1}/$maxRetries in ${delaySeconds}s',
+    );
 
     _reconnectTimer?.cancel();
     _reconnectTimer = Timer(Duration(milliseconds: delayMs), () {
@@ -204,8 +210,10 @@ class RealtimeConnectionMonitor {
       // Increment retry count before attempting
       _retryCount++;
       _ref.read(retryAttemptProvider.notifier).state = _retryCount;
-      
-      debugPrint('[CONNECTION_MONITOR] Executing reconnect attempt $_retryCount/$maxRetries');
+
+      debugPrint(
+        '[CONNECTION_MONITOR] Executing reconnect attempt $_retryCount/$maxRetries',
+      );
 
       // Try to connect
       _tryConnect();
@@ -224,19 +232,26 @@ class RealtimeConnectionMonitor {
       }
 
       // Create a test channel to verify connection
-      _channel = _supabase.channel('connection_test_${DateTime.now().millisecondsSinceEpoch}');
+      // PENTING: Gunakan tabel 'settings' (bukan 'orders') untuk menghindari
+      // double subscription conflict dengan OrderRepository's orders channel.
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      _channel = _supabase.channel('connection_monitor_settings_$timestamp');
 
       _channel!.onPostgresChanges(
         event: PostgresChangeEvent.all,
         schema: 'public',
-        table: 'orders',
+        table: 'settings', // ← FIXED: gunakan 'settings', bukan 'orders'
         callback: (payload) {
-          debugPrint('[CONNECTION_MONITOR] Test channel received event: ${payload.eventType}');
+          debugPrint(
+            '[CONNECTION_MONITOR] Test channel received event: ${payload.eventType}',
+          );
         },
       );
 
       _channel!.subscribe((status, error) {
-        debugPrint('[CONNECTION_MONITOR] Subscribe callback - status: $status, error: $error');
+        debugPrint(
+          '[CONNECTION_MONITOR] Subscribe callback - status: $status, error: $error',
+        );
 
         if (status == RealtimeSubscribeStatus.subscribed) {
           debugPrint('[CONNECTION_MONITOR] ✅ Successfully subscribed');
@@ -245,8 +260,10 @@ class RealtimeConnectionMonitor {
           debugPrint('[CONNECTION_MONITOR] ❌ Subscribe error: $error');
           _handleConnectionFailure();
         } else if (status == RealtimeSubscribeStatus.closed ||
-                   status == RealtimeSubscribeStatus.channelError) {
-          debugPrint('[CONNECTION_MONITOR] ⚠️ Subscribe failed with status: $status');
+            status == RealtimeSubscribeStatus.channelError) {
+          debugPrint(
+            '[CONNECTION_MONITOR] ⚠️ Subscribe failed with status: $status',
+          );
           _handleConnectionFailure();
         }
       });
@@ -260,8 +277,12 @@ class RealtimeConnectionMonitor {
   void _handleConnectionFailure() {
     // If we are already scheduling a reconnect (timer active), don't do it again
     // This prevents multiple error callbacks from resetting the timer
-    if (_isReconnectInProgress && _reconnectTimer != null && _reconnectTimer!.isActive) {
-      debugPrint('[CONNECTION_MONITOR] Reconnect already scheduled, ignoring duplicate failure event');
+    if (_isReconnectInProgress &&
+        _reconnectTimer != null &&
+        _reconnectTimer!.isActive) {
+      debugPrint(
+        '[CONNECTION_MONITOR] Reconnect already scheduled, ignoring duplicate failure event',
+      );
       return;
     }
 
@@ -294,7 +315,9 @@ class RealtimeConnectionMonitor {
 
   /// Handle fallback polling tick
   void _onFallbackTick() {
-    debugPrint('[CONNECTION_MONITOR] Fallback polling tick - triggering data refresh');
+    debugPrint(
+      '[CONNECTION_MONITOR] Fallback polling tick - triggering data refresh',
+    );
 
     // Notify listeners to refresh data
     _connectionStateController.add(ConnectionState.polling);
@@ -307,7 +330,9 @@ class RealtimeConnectionMonitor {
     // Try to reconnect every 2 minutes even in fallback mode
     Timer(const Duration(minutes: 2), () {
       if (_isFallbackActive && _isMonitoring) {
-        debugPrint('[CONNECTION_MONITOR] Background reconnect attempt from fallback mode');
+        debugPrint(
+          '[CONNECTION_MONITOR] Background reconnect attempt from fallback mode',
+        );
         _retryCount = 0; // Reset for background attempts
         _ref.read(retryAttemptProvider.notifier).state = 0;
         _isFallbackActive = false;

@@ -13,7 +13,8 @@ import '../../../../features/inventory/data/providers/housing_blocks_provider.da
 import '../../../../core/services/realtime_connection_monitor.dart';
 import '../../data/models/order_model.dart';
 import '../../data/providers/orders_provider.dart';
-import '../../data/providers/order_realtime_events_provider.dart'; // Needed for real-time listeners
+import '../../data/providers/order_realtime_events_provider.dart'; // masih dipakai oleh orderUpdateEventsProvider
+import '../../../../features/dashboard/data/providers/new_orders_provider.dart';
 import '../widgets/order_card.dart'; // Make sure this widget exists or is implemented
 
 class OrdersScreen extends ConsumerStatefulWidget {
@@ -68,14 +69,16 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
       });
     });
 
-    // Listen to new order events
-    ref.listen<AsyncValue<PostgresChangePayload>>(newOrderEventsProvider, (
+    // Listen to new order INSERT events — single source of truth via [NEW_ORDERS] channel
+    ref.listen<AsyncValue<Order>>(newOrderNotificationStreamProvider, (
       previous,
       next,
     ) {
-      next.whenData((payload) {
+      next.whenData((order) {
         ref.invalidate(ordersProvider);
-        debugPrint('OrdersScreen: Detected new order INSERT, refreshing list.');
+        debugPrint(
+          'OrdersScreen: Detected new order INSERT (${order.code}), refreshing list.',
+        );
       });
     });
 

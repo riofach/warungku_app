@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../../core/utils/formatters.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../inventory/data/providers/item_form_provider.dart';
@@ -17,7 +16,6 @@ import '../widgets/omset_card.dart';
 import '../widgets/profit_card.dart';
 import '../widgets/transaction_count_card.dart';
 import '../widgets/top_selling_card.dart';
-import '../../../orders/data/models/order_model.dart';
 
 /// Dashboard screen - main home screen for admin
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -35,67 +33,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshData();
     });
-    
-    // Set notification callback
-    NewOrdersNotifier.onNewOrderReceived = _handleNewOrderNotification;
   }
-  
-  @override
-  void dispose() {
-    // Clean up notification callback
-    if (NewOrdersNotifier.onNewOrderReceived == _handleNewOrderNotification) {
-      NewOrdersNotifier.onNewOrderReceived = null;
-    }
-    super.dispose();
-  }
-  
-  void _handleNewOrderNotification(Order order) {
-    if (!mounted) return;
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.notifications_active, color: Colors.white),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Pesanan Baru Diterima!',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  Text(
-                    '${order.customerName} - ${formatRupiah(order.total)} (Belum dibayar)',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: AppColors.primary,
-        duration: const Duration(seconds: 4),
-        action: SnackBarAction(
-          label: 'LIHAT',
-          textColor: Colors.white,
-          onPressed: () {
-            // Navigate to orders screen or show detail
-            // context.push('/orders');
-          },
-        ),
-      ),
-    );
-  }
+
+  // Notification is now handled globally by NewOrderNotificationOverlayHost
+  // via newOrderNotificationStreamProvider. No SnackBar needed here.
 
   /// Refresh dashboard and low stock data
   void _refreshData() {
     ref.invalidate(dashboardProvider);
     ref.invalidate(lowStockProvider);
-    ref.invalidate(newOrdersProvider);
+    // Use refresh() instead of invalidate() to preserve the Supabase Realtime
+    // channel subscription. invalidate() would destroy and recreate the channel,
+    // potentially missing INSERT events during the gap.
+    ref.read(newOrdersProvider.notifier).refresh();
     ref.invalidate(topSellingItemsProvider);
   }
 
@@ -104,26 +54,25 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final dashboardAsync = ref.watch(dashboardProvider);
     final user = Supabase.instance.client.auth.currentUser;
     final displayName =
-        user?.userMetadata?['display_name'] ?? user?.userMetadata?['name'] ?? 'Admin';
+        user?.userMetadata?['display_name'] ??
+        user?.userMetadata?['name'] ??
+        'Admin';
 
     // Listen to item form state changes for real-time dashboard updates
     // When item is successfully updated/created, auto-refresh dashboard
-    ref.listen<ItemFormState>(
-      itemFormNotifierProvider,
-      (previous, next) {
-        // Only refresh if status changed from non-success to success
-        // This prevents refresh on every build
-        if (previous?.isSuccess != true && next.isSuccess) {
-          debugPrint('[DASHBOARD] Item form success detected - auto-refreshing data');
-          _refreshData();
-        }
-      },
-    );
+    ref.listen<ItemFormState>(itemFormNotifierProvider, (previous, next) {
+      // Only refresh if status changed from non-success to success
+      // This prevents refresh on every build
+      if (previous?.isSuccess != true && next.isSuccess) {
+        debugPrint(
+          '[DASHBOARD] Item form success detected - auto-refreshing data',
+        );
+        _refreshData();
+      }
+    });
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Dashboard'),
-      ),
+      appBar: AppBar(title: const Text('Dashboard')),
       body: RefreshIndicator(
         onRefresh: () async {
           await Future.wait([
@@ -202,11 +151,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
           children: [
-            const Icon(
-              Icons.error_outline,
-              color: AppColors.error,
-              size: 48,
-            ),
+            const Icon(Icons.error_outline, color: AppColors.error, size: 48),
             const SizedBox(height: AppSpacing.md),
             Text(
               'Gagal memuat data. Tarik ke bawah untuk coba lagi.',

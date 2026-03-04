@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../data/providers/order_realtime_events_provider.dart';
+import '../../../../features/dashboard/data/providers/new_orders_provider.dart';
 import '../../data/models/order_model.dart';
 
 /// A widget that listens for new order events and displays an animated notification banner as an overlay.
@@ -14,10 +14,8 @@ import '../../data/models/order_model.dart';
 class NewOrderNotificationOverlayHost extends ConsumerStatefulWidget {
   final Widget child;
 
-  const NewOrderNotificationOverlayHost({
-    Key? key,
-    required this.child,
-  }) : super(key: key);
+  const NewOrderNotificationOverlayHost({Key? key, required this.child})
+    : super(key: key);
 
   @override
   ConsumerState<NewOrderNotificationOverlayHost> createState() =>
@@ -30,20 +28,22 @@ class _NewOrderNotificationOverlayHostState
   Timer? _autoDismissTimer;
 
   void _showNewOrderNotification(Order order) {
-    debugPrint('[NOTIFICATION_OVERLAY] 🔔 Showing notification for: ${order.code}');
-    
+    debugPrint(
+      '[NOTIFICATION_OVERLAY] 🔔 Showing notification for: ${order.code}',
+    );
+
     // UI/UX: Haptic feedback for better tactile response
     HapticFeedback.lightImpact();
-    
+
     // Cancel any existing timer
     _autoDismissTimer?.cancel();
-    
+
     // Remove existing overlay first (create "flash" effect)
     if (_overlayEntry != null) {
       debugPrint('[NOTIFICATION_OVERLAY] 🗑️ Removing old notification first');
       _overlayEntry?.remove();
       _overlayEntry = null;
-      
+
       // UI/UX: Small delay to create "flash" effect between old and new
       Future.delayed(const Duration(milliseconds: 100), () {
         _createAndShowOverlay(order);
@@ -51,15 +51,17 @@ class _NewOrderNotificationOverlayHostState
     } else {
       _createAndShowOverlay(order);
     }
-    
+
     // TODO: Play sound effect here
   }
 
   void _createAndShowOverlay(Order order) {
     if (!mounted) return;
-    
-    debugPrint('[NOTIFICATION_OVERLAY] 📦 Creating animated overlay for: ${order.code}');
-    
+
+    debugPrint(
+      '[NOTIFICATION_OVERLAY] 📦 Creating animated overlay for: ${order.code}',
+    );
+
     _overlayEntry = OverlayEntry(
       maintainState: false,
       builder: (context) => AnimatedNotificationBanner(
@@ -75,7 +77,9 @@ class _NewOrderNotificationOverlayHostState
       navigatorState.overlay!.insert(_overlayEntry!);
       debugPrint('[NOTIFICATION_OVERLAY] ✅ Overlay inserted with animation');
     } else {
-      debugPrint('[NOTIFICATION_OVERLAY] ❌ Error: Could not find NavigatorState or Overlay');
+      debugPrint(
+        '[NOTIFICATION_OVERLAY] ❌ Error: Could not find NavigatorState or Overlay',
+      );
       return;
     }
 
@@ -84,15 +88,17 @@ class _NewOrderNotificationOverlayHostState
   }
 
   void _navigateToOrder(Order order) {
-    debugPrint('[NOTIFICATION_OVERLAY] 👆 Notification tapped for: ${order.code}');
-    
+    debugPrint(
+      '[NOTIFICATION_OVERLAY] 👆 Notification tapped for: ${order.code}',
+    );
+
     // UI/UX: Haptic feedback on tap
     HapticFeedback.mediumImpact();
-    
+
     // Cancel timer and dismiss
     _autoDismissTimer?.cancel();
     _dismissNotification();
-    
+
     // Navigate to order detail screen
     final navContext = rootNavigatorKey.currentContext;
     if (navContext != null) {
@@ -101,7 +107,9 @@ class _NewOrderNotificationOverlayHostState
   }
 
   void _startAutoDismissTimer() {
-    debugPrint('[NOTIFICATION_OVERLAY] ⏱️ Starting 5-second auto-dismiss timer');
+    debugPrint(
+      '[NOTIFICATION_OVERLAY] ⏱️ Starting 5-second auto-dismiss timer',
+    );
     _autoDismissTimer = Timer(const Duration(seconds: 5), () {
       if (mounted) {
         debugPrint('[NOTIFICATION_OVERLAY] ⏰ Auto-dismissing notification');
@@ -128,40 +136,21 @@ class _NewOrderNotificationOverlayHostState
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('[NOTIFICATION_OVERLAY] 🏗️ Building widget, setting up listener...');
-    
-    ref.listen<AsyncValue<PostgresChangePayload>>(newOrderEventsProvider,
-        (previous, next) {
-      debugPrint('[NOTIFICATION_OVERLAY] 📡 Listener triggered! State: ${next.runtimeType}');
-      next.when(
-        data: (payload) {
-          debugPrint('[NOTIFICATION_OVERLAY] 📥 Data received! EventType: ${payload.eventType}');
-          final newOrderData = payload.newRecord;
-          if (newOrderData != null) {
-            try {
-              debugPrint('[NOTIFICATION_OVERLAY] 🔍 Parsing new order data...');
-              final order = Order.fromJson(newOrderData);
-              debugPrint('[NOTIFICATION_OVERLAY] ✅ Order parsed successfully: ${order.code}');
-              _showNewOrderNotification(order);
-            } catch (e, stackTrace) {
-              debugPrint('[NOTIFICATION_OVERLAY] ❌ Error parsing order: $e');
-              debugPrint('[NOTIFICATION_OVERLAY] Stack trace: $stackTrace');
-            }
-          } else {
-            debugPrint('[NOTIFICATION_OVERLAY] ⚠️ Received event but newRecord is null');
-          }
-        },
-        loading: () {
-          debugPrint('[NOTIFICATION_OVERLAY] ⏳ Loading new order event...');
-        },
-        error: (err, stack) {
-          debugPrint('[NOTIFICATION_OVERLAY] ❌ Error listening to new orders: $err');
-          debugPrint('[NOTIFICATION_OVERLAY] Stack trace: $stack');
-        },
-      );
+    // Listen to newOrderNotificationStreamProvider — single source of truth.
+    // The [NEW_ORDERS] Supabase channel (new_orders_provider.dart) emits
+    // a parsed Order object directly, no manual JSON parsing needed here.
+    ref.listen<AsyncValue<Order>>(newOrderNotificationStreamProvider, (
+      previous,
+      next,
+    ) {
+      next.whenData((order) {
+        debugPrint(
+          '[NOTIFICATION_OVERLAY] 🔔 New order received: ${order.code}',
+        );
+        _showNewOrderNotification(order);
+      });
     });
 
-    debugPrint('[NOTIFICATION_OVERLAY] ✨ Listener setup complete');
     return widget.child;
   }
 }
@@ -178,7 +167,8 @@ class AnimatedNotificationBanner extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<AnimatedNotificationBanner> createState() => _AnimatedNotificationBannerState();
+  State<AnimatedNotificationBanner> createState() =>
+      _AnimatedNotificationBannerState();
 }
 
 class _AnimatedNotificationBannerState extends State<AnimatedNotificationBanner>
@@ -197,49 +187,55 @@ class _AnimatedNotificationBannerState extends State<AnimatedNotificationBanner>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    
+
     // UI/UX FIX: Initialize animations here after dependencies are available
     // MediaQuery.of(context) cannot be called in initState()
     if (!_isInitialized) {
-      debugPrint('[ANIMATED_BANNER] 🎬 Initializing animation for: ${widget.order.code}');
-      
+      debugPrint(
+        '[ANIMATED_BANNER] 🎬 Initializing animation for: ${widget.order.code}',
+      );
+
       // UI/UX: Animation duration 150-300ms for micro-interactions
       // Check for reduced motion preference for accessibility
       final bool reduceMotion = MediaQuery.of(context).disableAnimations;
-      
+
       _controller = AnimationController(
         duration: Duration(milliseconds: reduceMotion ? 50 : 250),
         vsync: this,
       );
 
       // UI/UX: Use transform/opacity for performance (GPU accelerated)
-      _slideAnimation = Tween<Offset>(
-        begin: const Offset(0, -1.0), // Start from above (off screen)
-        end: Offset.zero, // End at normal position
-      ).animate(CurvedAnimation(
-        parent: _controller!,
-        // UI/UX: Reduced curve for users who prefer less motion
-        curve: reduceMotion ? Curves.linear : Curves.easeOutBack,
-      ));
+      _slideAnimation =
+          Tween<Offset>(
+            begin: const Offset(0, -1.0), // Start from above (off screen)
+            end: Offset.zero, // End at normal position
+          ).animate(
+            CurvedAnimation(
+              parent: _controller!,
+              // UI/UX: Reduced curve for users who prefer less motion
+              curve: reduceMotion ? Curves.linear : Curves.easeOutBack,
+            ),
+          );
 
-      _fadeAnimation = Tween<double>(
-        begin: 0.0,
-        end: 1.0,
-      ).animate(CurvedAnimation(
-        parent: _controller!,
-        curve: reduceMotion ? Curves.linear : Curves.easeIn,
-      ));
+      _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(
+          parent: _controller!,
+          curve: reduceMotion ? Curves.linear : Curves.easeIn,
+        ),
+      );
 
       // Start animation
       _controller!.forward();
-      
+
       _isInitialized = true;
     }
   }
 
   @override
   void dispose() {
-    debugPrint('[ANIMATED_BANNER] 🧹 Disposing animation for: ${widget.order.code}');
+    debugPrint(
+      '[ANIMATED_BANNER] 🧹 Disposing animation for: ${widget.order.code}',
+    );
     _controller?.dispose();
     super.dispose();
   }
@@ -250,7 +246,7 @@ class _AnimatedNotificationBannerState extends State<AnimatedNotificationBanner>
     if (!_isInitialized || _slideAnimation == null || _fadeAnimation == null) {
       return const SizedBox.shrink();
     }
-    
+
     return Positioned(
       top: 0,
       left: 0,
@@ -259,10 +255,7 @@ class _AnimatedNotificationBannerState extends State<AnimatedNotificationBanner>
         position: _slideAnimation!,
         child: FadeTransition(
           opacity: _fadeAnimation!,
-          child: _NotificationContent(
-            order: widget.order,
-            onTap: widget.onTap,
-          ),
+          child: _NotificationContent(order: widget.order, onTap: widget.onTap),
         ),
       ),
     );
@@ -274,17 +267,15 @@ class _NotificationContent extends StatelessWidget {
   final Order order;
   final VoidCallback onTap;
 
-  const _NotificationContent({
-    required this.order,
-    required this.onTap,
-  });
+  const _NotificationContent({required this.order, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     // UI/UX: Accessibility - semantic label for screen readers
     return Semantics(
       button: true,
-      label: 'Pesanan baru dari ${order.customerName}, kode ${order.code}. Tap untuk melihat detail.',
+      label:
+          'Pesanan baru dari ${order.customerName}, kode ${order.code}. Tap untuk melihat detail.',
       child: Material(
         color: Colors.transparent,
         child: InkWell(

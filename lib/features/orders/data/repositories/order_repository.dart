@@ -17,8 +17,8 @@ class OrderRepository {
   OrderRepository({
     SupabaseClient? supabase,
     Duration timeout = const Duration(seconds: 10),
-  })  : _supabase = supabase ?? Supabase.instance.client,
-        _timeout = timeout;
+  }) : _supabase = supabase ?? Supabase.instance.client,
+       _timeout = timeout;
 
   /// Get new orders (pending or paid)
   Future<List<Order>> getNewOrders({int limit = 5}) async {
@@ -33,10 +33,8 @@ class OrderRepository {
           .order('created_at', ascending: false)
           .limit(limit)
           .timeout(_timeout);
-      
-      return (response as List)
-          .map((json) => Order.fromJson(json))
-          .toList();
+
+      return (response as List).map((json) => Order.fromJson(json)).toList();
     } catch (e) {
       // Allow specific error handling if needed, but here we just rethrow with message
       throw Exception('Gagal memuat pesanan: ${e.toString()}');
@@ -56,10 +54,8 @@ class OrderRepository {
           .order('created_at', ascending: false)
           .limit(limit)
           .timeout(_timeout);
-      
-      return (response as List)
-          .map((json) => Order.fromJson(json))
-          .toList();
+
+      return (response as List).map((json) => Order.fromJson(json)).toList();
     } catch (e) {
       debugPrint('[ORDER_REPOSITORY] Error fetching orders: $e');
       throw Exception('Gagal memuat pesanan: ${e.toString()}');
@@ -82,7 +78,7 @@ class OrderRepository {
           .eq(SupabaseConstants.colId, orderId)
           .single()
           .timeout(_timeout);
-      
+
       return Order.fromJson(response);
     } catch (e) {
       throw Exception('Gagal memuat detail pesanan: ${e.toString()}');
@@ -104,9 +100,7 @@ class OrderRepository {
         .limit(50) // Limit to 50 recent orders for performance
         .timeout(_timeout);
 
-    yield (initialOrders as List)
-        .map((json) => Order.fromJson(json))
-        .toList();
+    yield (initialOrders as List).map((json) => Order.fromJson(json)).toList();
 
     // Listen to realtime changes for updates
     await for (final payload in getOrdersRealtimeStream()) {
@@ -131,8 +125,9 @@ class OrderRepository {
   /// using Postgres Changes with auto-retry on token expiration.
   Stream<PostgresChangePayload> getOrdersRealtimeStream() {
     debugPrint('[ORDER_REPOSITORY] Setting up realtime stream with retry...');
-    final StreamController<PostgresChangePayload> controller = StreamController.broadcast();
-    
+    final StreamController<PostgresChangePayload> controller =
+        StreamController.broadcast();
+
     // Retry configuration
     const maxRetries = 3;
     const baseDelay = Duration(seconds: 2);
@@ -152,25 +147,36 @@ class OrderRepository {
         // Check and refresh session if needed
         final session = _supabase.auth.currentSession;
         if (session == null || session.isExpired) {
-          debugPrint('[ORDER_REPOSITORY] 🔄 Session expired or missing, attempting refresh...');
+          debugPrint(
+            '[ORDER_REPOSITORY] 🔄 Session expired or missing, attempting refresh...',
+          );
           try {
             await _supabase.auth.refreshSession();
             debugPrint('[ORDER_REPOSITORY] ✅ Session refreshed successfully');
           } catch (refreshError) {
-            debugPrint('[ORDER_REPOSITORY] ⚠️ Could not refresh session: $refreshError');
+            debugPrint(
+              '[ORDER_REPOSITORY] ⚠️ Could not refresh session: $refreshError',
+            );
             // Continue anyway - maybe we're using anon key
           }
         }
 
         // Create new channel
-        currentChannel = _supabase.channel('orders_channel_${DateTime.now().millisecondsSinceEpoch}');
+        currentChannel = _supabase.channel(
+          'orders_channel_${DateTime.now().millisecondsSinceEpoch}',
+        );
 
         currentChannel!.onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: SupabaseConstants.tableOrders,
           callback: (payload) {
-            debugPrint('[ORDER_REPOSITORY] 🔔 Realtime event received: ${payload.eventType}');
+            debugPrint(
+              '[ORDER_REPOSITORY] 🔔 Realtime event received: ${payload.eventType}',
+            );
+            debugPrint(
+              '[ORDER_REPOSITORY] 📦 Payload detail — newRecord: ${payload.newRecord}, oldRecord: ${payload.oldRecord}',
+            );
             if (!controller.isClosed) {
               controller.add(payload);
               debugPrint('[ORDER_REPOSITORY] ✅ Payload added to controller');
@@ -178,29 +184,43 @@ class OrderRepository {
           },
         );
 
+        // Diagnostik: log jumlah aktif channel sebelum subscribe
+        debugPrint(
+          '[ORDER_REPOSITORY] 📊 Active channels before subscribe: ${_supabase.getChannels().length}',
+        );
+
         await currentChannel!.subscribe((status, error) {
           debugPrint('[ORDER_REPOSITORY] 📡 Subscription status: $status');
-          
+
           if (error != null) {
             debugPrint('[ORDER_REPOSITORY] ❌ Subscription error: $error');
-            
+
             // Handle token expiration with retry
             final errorStr = error.toString();
-            if (errorStr.contains('InvalidJWTToken') || errorStr.contains('expired')) {
+            if (errorStr.contains('InvalidJWTToken') ||
+                errorStr.contains('expired')) {
               if (retryCount < maxRetries) {
                 retryCount++;
                 final delay = baseDelay * retryCount;
-                debugPrint('[ORDER_REPOSITORY] 🔄 Token expired. Retrying in ${delay.inSeconds}s (attempt $retryCount/$maxRetries)...');
-                
+                debugPrint(
+                  '[ORDER_REPOSITORY] 🔄 Token expired. Retrying in ${delay.inSeconds}s (attempt $retryCount/$maxRetries)...',
+                );
+
                 Future.delayed(delay, () {
                   if (!controller.isClosed && !isSubscribed) {
                     setupSubscription();
                   }
                 });
               } else {
-                debugPrint('[ORDER_REPOSITORY] ❌ Max retries reached. Giving up.');
+                debugPrint(
+                  '[ORDER_REPOSITORY] ❌ Max retries reached. Giving up.',
+                );
                 if (!controller.isClosed) {
-                  controller.addError(Exception('Failed to subscribe after $maxRetries attempts: Token expired'));
+                  controller.addError(
+                    Exception(
+                      'Failed to subscribe after $maxRetries attempts: Token expired',
+                    ),
+                  );
                 }
               }
             } else {
@@ -213,10 +233,11 @@ class OrderRepository {
             // Success!
             isSubscribed = true;
             retryCount = 0; // Reset on success
-            debugPrint('[ORDER_REPOSITORY] ✅ Successfully subscribed to realtime changes');
+            debugPrint(
+              '[ORDER_REPOSITORY] ✅ Successfully subscribed to realtime changes',
+            );
           }
         });
-
       } catch (e) {
         debugPrint('[ORDER_REPOSITORY] ❌ Error setting up subscription: $e');
         if (!controller.isClosed) {
@@ -261,12 +282,16 @@ class OrderRepository {
     // 1. Fetch a real item to ensure FK constraint
     final itemResponse = await _supabase
         .from(SupabaseConstants.tableItems)
-        .select('${SupabaseConstants.colId}, ${SupabaseConstants.colSellPrice}, ${SupabaseConstants.colName}')
+        .select(
+          '${SupabaseConstants.colId}, ${SupabaseConstants.colSellPrice}, ${SupabaseConstants.colName}',
+        )
         .limit(1)
         .maybeSingle();
 
     if (itemResponse == null) {
-      throw Exception('Tidak ada item di database. Tambahkan item terlebih dahulu.');
+      throw Exception(
+        'Tidak ada item di database. Tambahkan item terlebih dahulu.',
+      );
     }
 
     final itemId = itemResponse[SupabaseConstants.colId] as String;
@@ -281,19 +306,23 @@ class OrderRepository {
         .maybeSingle();
 
     if (housingBlockResponse == null) {
-      throw Exception('Tidak ada housing block di database. Tambahkan housing block terlebih dahulu.');
+      throw Exception(
+        'Tidak ada housing block di database. Tambahkan housing block terlebih dahulu.',
+      );
     }
 
-    final housingBlockId = housingBlockResponse[SupabaseConstants.colId] as String;
+    final housingBlockId =
+        housingBlockResponse[SupabaseConstants.colId] as String;
 
     // 3. Prepare dummy order data
     final now = DateTime.now();
     final timestamp = now.millisecondsSinceEpoch;
     // WRG-SIM-HHmmss-fff (Unique enough for testing)
-    final timeStr = '${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}';
+    final timeStr =
+        '${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}';
     final millisStr = now.millisecond.toString().padLeft(3, '0');
     final code = 'WRG-SIM-$timeStr-$millisStr';
-    
+
     final qty = 1 + (now.second % 3); // 1-3 items
     final total = itemPrice * qty;
 
@@ -305,9 +334,11 @@ class OrderRepository {
           SupabaseConstants.colCustomerName: 'Simulated User',
           SupabaseConstants.colPaymentMethod: 'qris',
           SupabaseConstants.colDeliveryType: 'delivery',
-          SupabaseConstants.colStatus: 'paid', // Trigger "New Order" flow immediately
+          SupabaseConstants.colStatus:
+              'paid', // Trigger "New Order" flow immediately
           SupabaseConstants.colTotal: total,
-          SupabaseConstants.colHousingBlockId: housingBlockId, // Valid FK to housing_blocks
+          SupabaseConstants.colHousingBlockId:
+              housingBlockId, // Valid FK to housing_blocks
         })
         .select()
         .single();

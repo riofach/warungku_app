@@ -6,6 +6,7 @@ import 'core/services/realtime_connection_monitor.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'features/orders/presentation/widgets/new_order_notification_overlay_host.dart';
+import 'features/dashboard/data/providers/new_orders_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,11 +17,7 @@ void main() async {
   // Initialize Supabase
   await SupabaseService.initialize();
 
-  runApp(
-    const ProviderScope(
-      child: WarungKuApp(),
-    ),
-  );
+  runApp(const ProviderScope(child: WarungKuApp()));
 }
 
 class WarungKuApp extends ConsumerStatefulWidget {
@@ -30,7 +27,8 @@ class WarungKuApp extends ConsumerStatefulWidget {
   ConsumerState<WarungKuApp> createState() => _WarungKuAppState();
 }
 
-class _WarungKuAppState extends ConsumerState<WarungKuApp> with WidgetsBindingObserver {
+class _WarungKuAppState extends ConsumerState<WarungKuApp>
+    with WidgetsBindingObserver {
   RealtimeConnectionMonitor? _connectionMonitor;
 
   @override
@@ -38,11 +36,16 @@ class _WarungKuAppState extends ConsumerState<WarungKuApp> with WidgetsBindingOb
     super.initState();
     // Register lifecycle observer
     WidgetsBinding.instance.addObserver(this);
-    
-    // Initialize connection monitor after first frame
+
+    // Initialize connection monitor and realtime subscriptions after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Start monitoring
+      // Start connection monitoring
       ref.read(connectionMonitorProvider).startMonitoring();
+
+      // Initialize newOrdersProvider immediately so the [NEW_ORDERS] Supabase
+      // Realtime channel is active from app startup (via ref.keepAlive).
+      // This ensures banner notifications work on ALL screens, not just Dashboard.
+      ref.read(newOrdersProvider);
     });
   }
 
@@ -56,10 +59,12 @@ class _WarungKuAppState extends ConsumerState<WarungKuApp> with WidgetsBindingOb
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    
+
     // Pause/resume connection monitoring based on app lifecycle
     if (state == AppLifecycleState.paused) {
-      debugPrint('[WARUNGKU_APP] App paused - connection monitoring continues in background');
+      debugPrint(
+        '[WARUNGKU_APP] App paused - connection monitoring continues in background',
+      );
     } else if (state == AppLifecycleState.resumed) {
       debugPrint('[WARUNGKU_APP] App resumed - checking connection state');
       // Trigger a connection check when app resumes
@@ -107,16 +112,20 @@ class _WarungKuAppState extends ConsumerState<WarungKuApp> with WidgetsBindingOb
     // Listen to connection state changes for global notifications
     ref.listen<ConnectionState>(connectionStateProvider, (previous, next) {
       if (previous != next) {
-        debugPrint('[WARUNGKU_APP] Connection state changed: $previous → $next');
-        
+        debugPrint(
+          '[WARUNGKU_APP] Connection state changed: $previous → $next',
+        );
+
         // Show snackbar notification for significant state changes
-        if (next == ConnectionState.polling && previous == ConnectionState.reconnecting) {
+        if (next == ConnectionState.polling &&
+            previous == ConnectionState.reconnecting) {
           _showConnectionNotification(
             'Mode polling aktif - Update real-time tidak tersedia',
             Colors.orange,
           );
-        } else if (next == ConnectionState.connected && 
-                  (previous == ConnectionState.reconnecting || previous == ConnectionState.polling)) {
+        } else if (next == ConnectionState.connected &&
+            (previous == ConnectionState.reconnecting ||
+                previous == ConnectionState.polling)) {
           _showConnectionNotification(
             'Terhubung kembali - Update real-time aktif',
             Colors.green,

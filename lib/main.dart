@@ -2,11 +2,13 @@ import 'package:flutter/material.dart' hide ConnectionState;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'core/services/supabase_service.dart';
+import 'core/services/local_notification_service.dart';
 import 'core/services/realtime_connection_monitor.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'features/orders/presentation/widgets/new_order_notification_overlay_host.dart';
 import 'features/dashboard/data/providers/new_orders_provider.dart';
+import 'features/orders/data/providers/orders_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,6 +18,11 @@ void main() async {
 
   // Initialize Supabase
   await SupabaseService.initialize();
+
+  // Story 7-8: Inisialisasi local notification service SEBELUM runApp()
+  // WAJIB dipanggil di sini karena FlutterLocalNotificationsPlugin
+  // harus diinisialisasi di luar widget tree.
+  await LocalNotificationService.initialize();
 
   runApp(const ProviderScope(child: WarungKuApp()));
 }
@@ -46,6 +53,17 @@ class _WarungKuAppState extends ConsumerState<WarungKuApp>
       // Realtime channel is active from app startup (via ref.keepAlive).
       // This ensures banner notifications work on ALL screens, not just Dashboard.
       ref.read(newOrdersProvider);
+
+      // Initialize ordersProvider immediately so the 30-second polling timer
+      // and notification-detection logic are active from app startup.
+      // This is the RELIABLE fallback for notifications when Supabase Realtime
+      // events are missed. Uses ref.keepAlive() internally to stay alive.
+      ref.read(ordersProvider);
+
+      // Story 7-8: Request izin notifikasi SETELAH widget tree aktif.
+      // Dipanggil di sini (bukan di main()) agar Android Activity sudah tersedia,
+      // sehingga dialog izin notifikasi benar-benar muncul ke user.
+      LocalNotificationService.requestPermission();
     });
   }
 

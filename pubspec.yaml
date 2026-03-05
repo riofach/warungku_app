@@ -30,6 +30,9 @@ dependencies:
   # Media
   image_picker: ^1.2.1
   
+  # Local Notifications (Story 7-8: Android Push Notification)
+  flutter_local_notifications: ^18.0.0
+
   # PDF Generation
   pdf: ^3.11.3
   printing: ^5.14.2

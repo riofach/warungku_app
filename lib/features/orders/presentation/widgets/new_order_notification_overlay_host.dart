@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../core/services/local_notification_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../features/dashboard/data/providers/new_orders_provider.dart';
 import '../../data/models/order_model.dart';
@@ -34,6 +35,16 @@ class _NewOrderNotificationOverlayHostState
 
     // UI/UX: Haptic feedback for better tactile response
     HapticFeedback.lightImpact();
+
+    // Story 7-8: AC 4 — Trigger Android push notification BERSAMAAN dengan in-app banner
+    // AC 5: showNewOrderNotification dipanggil HANYA dari sini (satu titik integrasi)
+    ref
+        .read(localNotificationServiceProvider)
+        .showNewOrderNotification(
+          orderId: order.id,
+          customerName: order.customerName,
+          orderCode: order.code,
+        );
 
     // Cancel any existing timer
     _autoDismissTimer?.cancel();

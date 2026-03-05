@@ -11,6 +11,9 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        // Required by flutter_local_notifications: enables Java 8+ Time API backport
+        // for Android devices running API < 26 (Android 8.0)
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -41,4 +44,11 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Required for flutter_local_notifications: desugars Java 8+ Time API
+    // for compatibility with Android API < 26 (Android 8.0)
+    // Use AGP 7.4+ compatible version
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

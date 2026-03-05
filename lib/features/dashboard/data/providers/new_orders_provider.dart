@@ -21,6 +21,12 @@ final newOrdersProvider = AsyncNotifierProvider<NewOrdersNotifier, List<Order>>(
 // ---------------------------------------------------------------------------
 final _newOrderNotificationController = StreamController<Order>.broadcast();
 
+/// Deduplication set: tracks order IDs that have already been notified.
+/// Prevents duplicate banners when both Realtime AND polling detect the same
+/// new order. The set grows unbounded during a session — orders are small
+/// objects so memory impact is negligible for a POS-scale app.
+final _notifiedOrderIds = <String>{};
+
 /// Provides a stream of newly-inserted orders for the notification overlay.
 /// Emits an [Order] everytime a new order INSERT is received via Realtime.
 final newOrderNotificationStreamProvider = StreamProvider<Order>((ref) {
@@ -30,7 +36,15 @@ final newOrderNotificationStreamProvider = StreamProvider<Order>((ref) {
 /// Emit a new order notification to the global banner overlay.
 /// Called from [ordersProvider] when polling detects a new order,
 /// AND from [NewOrdersNotifier] when Supabase Realtime delivers an INSERT.
+/// Deduplication: each order is notified at most once per app session.
 void emitNewOrderNotification(Order order) {
+  if (_notifiedOrderIds.contains(order.id)) {
+    debugPrint(
+      '[NOTIFICATION] ⏭️ Duplicate notification skipped: ${order.code}',
+    );
+    return;
+  }
+  _notifiedOrderIds.add(order.id);
   debugPrint('[NOTIFICATION] 🚀 emitNewOrderNotification: ${order.code}');
   _newOrderNotificationController.add(order);
 }
@@ -114,12 +128,13 @@ class NewOrdersNotifier extends AsyncNotifier<List<Order>> {
 
   void _handleInsert(Map<String, dynamic> newRecord) {
     // Parse order and emit to global notification stream (ALL new orders).
+    // Uses emitNewOrderNotification() for deduplication with polling channel.
     try {
       final order = Order.fromJson(newRecord);
       debugPrint(
         '[NEW_ORDERS] 🔔 Emitting new order notification: ${order.code}',
       );
-      _newOrderNotificationController.add(order);
+      emitNewOrderNotification(order);
     } catch (e) {
       debugPrint('[NEW_ORDERS] Error parsing new order for notification: $e');
     }

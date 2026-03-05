@@ -53,6 +53,12 @@ final ordersErrorProvider = StateProvider<String?>((ref) => null);
 /// Uses server-side join to include housing block data
 /// Enhanced with graceful error handling and persistent cache
 final ordersProvider = StreamProvider<List<Order>>((ref) {
+  // Keep this provider alive globally so the 30-second polling timer and
+  // notification-detection logic remain active regardless of which screen
+  // is currently mounted. This is the reliable fallback for notifications
+  // when Supabase Realtime events are missed.
+  ref.keepAlive();
+
   final repository = ref.watch(orderRepositoryProvider);
 
   // Get cache and state refs
@@ -160,10 +166,10 @@ final ordersProvider = StreamProvider<List<Order>>((ref) {
     }
   });
 
-  // Periodic fallback polling every 30 seconds
+  // Periodic fallback polling every 15 seconds
   // Ensures list stays fresh even when Supabase Realtime events are missed
   // (e.g., RLS issue, background connection drop, silent failure)
-  final pollingTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+  final pollingTimer = Timer.periodic(const Duration(seconds: 15), (_) {
     if (!controller.isClosed) {
       debugPrint('[ORDERS_PROVIDER] Periodic 30s poll — refreshing orders...');
       fetchOrders();

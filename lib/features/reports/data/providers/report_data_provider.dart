@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../features/orders/data/models/order_model.dart';
 import '../../../../features/transactions/data/models/transaction_model.dart';
 import '../../providers/report_filter_provider.dart';
 import '../models/report_summary_model.dart';
@@ -25,6 +26,14 @@ final reportTransactionsProvider = FutureProvider.autoDispose<List<Transaction>>
   final filter = ref.watch(reportFilterProvider);
   
   return repository.getTransactions(filter.dateRange.start, filter.dateRange.end);
+});
+
+// Online Orders List Provider
+final reportOrdersProvider = FutureProvider.autoDispose<List<Order>>((ref) async {
+  final repository = ref.watch(reportRepositoryProvider);
+  final filter = ref.watch(reportFilterProvider);
+
+  return repository.getOrdersForReport(filter.dateRange.start, filter.dateRange.end);
 });
 
 // Top Selling Items Provider

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../features/orders/data/models/order_model.dart';
 import '../../../../features/transactions/data/models/transaction_model.dart';
 import '../models/report_summary_model.dart';
 import '../models/top_item_model.dart';
@@ -69,31 +70,44 @@ class ReportRepository {
   /// Get list of transactions for a specific period
   Future<List<Transaction>> getTransactions(DateTime start, DateTime end) async {
     try {
-      // Shift filter dates by +7 hours to match Jakarta-shifted DB storage
-      // This logic must match the RPCs logic
       final startShifted = start.add(const Duration(hours: 7));
       final endShifted = end.add(const Duration(hours: 7));
 
-      // Include admin info similar to TransactionRepository
-      const selectQuery = '''
-        *,
-        admin:users!transactions_admin_id_fkey(id, name, email),
-        transaction_items(*)
-      ''';
-
       final response = await _supabase
           .from('transactions')
-          .select(selectQuery)
+          .select('*, transaction_items(*)')
           .gte('created_at', startShifted.toUtc().toIso8601String())
           .lte('created_at', endShifted.toUtc().toIso8601String())
           .order('created_at', ascending: false);
 
-      final List<dynamic> data = response as List<dynamic>;
-      return data.map((e) => Transaction.fromJson(e as Map<String, dynamic>)).toList();
+      return (response as List)
+          .map((e) => Transaction.fromJson(e as Map<String, dynamic>))
+          .toList();
     } on PostgrestException catch (e) {
       throw Exception('Gagal memuat riwayat transaksi: ${e.message}');
     } catch (e) {
       throw Exception('Terjadi kesalahan saat memuat transaksi.');
+    }
+  }
+
+  /// Get list of online orders for a specific period
+  Future<List<Order>> getOrdersForReport(DateTime start, DateTime end) async {
+    try {
+      final startShifted = start.add(const Duration(hours: 7));
+      final endShifted = end.add(const Duration(hours: 7));
+
+      final response = await _supabase
+          .from('orders')
+          .select('*, housing_block:housing_blocks(id, name)')
+          .gte('created_at', startShifted.toUtc().toIso8601String())
+          .lte('created_at', endShifted.toUtc().toIso8601String())
+          .order('created_at', ascending: false);
+
+      return (response as List).map((e) => Order.fromJson(e as Map<String, dynamic>)).toList();
+    } on PostgrestException catch (e) {
+      throw Exception('Gagal memuat riwayat pesanan: ${e.message}');
+    } catch (e) {
+      throw Exception('Terjadi kesalahan saat memuat pesanan.');
     }
   }
 

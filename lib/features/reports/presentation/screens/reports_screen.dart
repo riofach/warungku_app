@@ -7,6 +7,7 @@ import '../widgets/report_filter_section.dart';
 import '../widgets/report_summary_section.dart';
 import '../widgets/transaction_list_section.dart';
 import '../widgets/best_selling_section.dart';
+import '../widgets/order_list_section.dart';
 import '../../data/providers/report_data_provider.dart';
 import '../../data/providers/report_pdf_provider.dart';
 
@@ -65,6 +66,7 @@ class ReportsScreen extends ConsumerWidget {
                   onRefresh: () async {
                     ref.invalidate(reportSummaryProvider);
                     ref.invalidate(reportTransactionsProvider);
+                    ref.invalidate(reportOrdersProvider);
                     ref.invalidate(topSellingItemsProvider);
                   },
                   child: SingleChildScrollView(
@@ -92,7 +94,7 @@ class ReportsScreen extends ConsumerWidget {
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                           child: Text(
-                            'Riwayat Transaksi',
+                            'Riwayat Transaksi (POS)',
                             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.bold,
                             ),
@@ -100,6 +102,21 @@ class ReportsScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: AppSpacing.sm),
                         const TransactionListSection(
+                          shrinkWrap: true,
+                          physics: NeverScrollableScrollPhysics(),
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                          child: Text(
+                            'Riwayat Pesanan Online',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        const OrderListSection(
                           shrinkWrap: true,
                           physics: NeverScrollableScrollPhysics(),
                         ),

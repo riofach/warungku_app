@@ -11,3 +11,4 @@ export 'presentation/widgets/new_orders_section.dart';
 export 'presentation/widgets/omset_card.dart';
 export 'presentation/widgets/profit_card.dart';
 export 'presentation/widgets/transaction_count_card.dart';
+export 'presentation/widgets/order_summary_card.dart';

@@ -1,13 +1,17 @@
 class DashboardSummary {
-  final int omset; // Total revenue today
-  final int profit; // Total profit today
-  final int transactionCount; // Number of transactions today
+  final int omset;
+  final int profit;
+  final int transactionCount;
+  final int orderCount;
+  final int orderOmset;
   final DateTime date;
 
   const DashboardSummary({
     required this.omset,
     required this.profit,
     required this.transactionCount,
+    required this.orderCount,
+    required this.orderOmset,
     required this.date,
   });
 
@@ -16,6 +20,8 @@ class DashboardSummary {
       omset: (json['omset'] as num?)?.toInt() ?? 0,
       profit: (json['profit'] as num?)?.toInt() ?? 0,
       transactionCount: (json['transaction_count'] as num?)?.toInt() ?? 0,
+      orderCount: (json['order_count'] as num?)?.toInt() ?? 0,
+      orderOmset: (json['order_omset'] as num?)?.toInt() ?? 0,
       date: json['date'] != null
           ? DateTime.parse(json['date'] as String)
           : DateTime.now(),
@@ -27,6 +33,8 @@ class DashboardSummary {
       omset: 0,
       profit: 0,
       transactionCount: 0,
+      orderCount: 0,
+      orderOmset: 0,
       date: DateTime.now(),
     );
   }
@@ -36,6 +44,8 @@ class DashboardSummary {
       'omset': omset,
       'profit': profit,
       'transaction_count': transactionCount,
+      'order_count': orderCount,
+      'order_omset': orderOmset,
       'date': date.toIso8601String(),
     };
   }
@@ -48,6 +58,8 @@ class DashboardSummary {
           omset == other.omset &&
           profit == other.profit &&
           transactionCount == other.transactionCount &&
+          orderCount == other.orderCount &&
+          orderOmset == other.orderOmset &&
           date == other.date;
 
   @override
@@ -55,6 +67,8 @@ class DashboardSummary {
       omset.hashCode ^
       profit.hashCode ^
       transactionCount.hashCode ^
+      orderCount.hashCode ^
+      orderOmset.hashCode ^
       date.hashCode;
 
   @override

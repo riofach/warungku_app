@@ -15,6 +15,7 @@ import '../widgets/new_orders_section.dart';
 import '../widgets/omset_card.dart';
 import '../widgets/profit_card.dart';
 import '../widgets/transaction_count_card.dart';
+import '../widgets/order_summary_card.dart';
 import '../widgets/top_selling_card.dart';
 
 /// Dashboard screen - main home screen for admin
@@ -105,6 +106,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
                     const SizedBox(height: AppSpacing.md),
                     TransactionCountCard(count: summary.transactionCount),
+                    const SizedBox(height: AppSpacing.md),
+                    OrderSummaryCard(
+                      orderCount: summary.orderCount,
+                      orderOmset: summary.orderOmset,
+                    ),
                   ],
                 ),
                 loading: () => _buildShimmerCards(),
@@ -139,6 +145,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             Expanded(child: _ShimmerCard()),
           ],
         ),
+        const SizedBox(height: AppSpacing.md),
+        _ShimmerCard(),
         const SizedBox(height: AppSpacing.md),
         _ShimmerCard(),
       ],

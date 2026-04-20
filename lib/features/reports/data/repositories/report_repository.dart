@@ -80,13 +80,112 @@ class ReportRepository {
           .lte('created_at', endShifted.toUtc().toIso8601String())
           .order('created_at', ascending: false);
 
-      return (response as List)
+      final transactions = (response as List)
           .map((e) => Transaction.fromJson(e as Map<String, dynamic>))
           .toList();
+
+      final withAdmins = await _enrichAdminNames(transactions);
+      return _enrichItemNames(withAdmins);
     } on PostgrestException catch (e) {
+      debugPrint('❌ getTransactions PostgrestException: ${e.message}');
       throw Exception('Gagal memuat riwayat transaksi: ${e.message}');
     } catch (e) {
+      debugPrint('❌ getTransactions error: $e');
       throw Exception('Terjadi kesalahan saat memuat transaksi.');
+    }
+  }
+
+  /// Batch-fetch admin names and enrich transactions.
+  /// Seeds from current auth session first so the owner's name always resolves
+  /// even if they lack a row in public.users.
+  Future<List<Transaction>> _enrichAdminNames(List<Transaction> transactions) async {
+    final adminIds = transactions
+        .map((t) => t.adminId)
+        .whereType<String>()
+        .toSet()
+        .toList();
+
+    if (adminIds.isEmpty) return transactions;
+
+    // Seed map from the currently logged-in user's session metadata
+    final adminMap = <String, TransactionAdmin>{};
+    final currentUser = _supabase.auth.currentUser;
+    if (currentUser != null) {
+      final meta = currentUser.userMetadata ?? {};
+      adminMap[currentUser.id] = TransactionAdmin(
+        id: currentUser.id,
+        name: meta['name'] as String?,
+        email: currentUser.email ?? '',
+      );
+    }
+
+    // Supplement from public.users for other admins
+    try {
+      final usersResponse = await _supabase
+          .from('users')
+          .select('id, name, email')
+          .inFilter('id', adminIds);
+
+      for (final row in usersResponse as List) {
+        final id = row['id'] as String;
+        adminMap[id] = TransactionAdmin.fromJson(row as Map<String, dynamic>);
+      }
+    } catch (e) {
+      debugPrint('⚠️ Admin name DB lookup failed: $e');
+    }
+
+    return transactions.map((t) {
+      if (t.adminId == null || t.admin != null) return t;
+      final admin = adminMap[t.adminId!];
+      if (admin == null) return t;
+      return t.copyWith(admin: admin);
+    }).toList();
+  }
+
+  /// Batch-fetch item names and enrich transaction items
+  Future<List<Transaction>> _enrichItemNames(List<Transaction> transactions) async {
+    final itemIds = transactions
+        .expand((t) => t.items)
+        .map((i) => i.itemId)
+        .whereType<String>()
+        .toSet()
+        .toList();
+
+    if (itemIds.isEmpty) return transactions;
+
+    try {
+      final itemsResponse = await _supabase
+          .from('items')
+          .select('id, name')
+          .inFilter('id', itemIds);
+
+      final nameMap = <String, String>{
+        for (final row in itemsResponse as List)
+          row['id'] as String: row['name'] as String,
+      };
+
+      return transactions.map((t) {
+        final enrichedItems = t.items.map((item) {
+          if (item.itemName != null || item.itemId == null) return item;
+          final name = nameMap[item.itemId!];
+          if (name == null) return item;
+          return TransactionItem(
+            id: item.id,
+            transactionId: item.transactionId,
+            itemId: item.itemId,
+            itemName: name,
+            quantity: item.quantity,
+            buyPrice: item.buyPrice,
+            price: item.price,
+            subtotal: item.subtotal,
+            createdAt: item.createdAt,
+          );
+        }).toList();
+        return t.copyWith(items: enrichedItems);
+      }).toList();
+    } catch (e) {
+      debugPrint('⚠️ Item name enrichment failed: $e');
+      return transactions;
     }
   }
 

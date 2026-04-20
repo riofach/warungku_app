@@ -17,7 +17,7 @@
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"/>
     
     <application
-        android:label="Warungku"
+        android:label="Warung Luthfan"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

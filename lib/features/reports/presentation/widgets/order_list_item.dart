@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/formatters.dart';
@@ -17,7 +16,7 @@ class OrderListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final timeStr = DateFormat('HH:mm').format(order.createdAt.toLocal());
+    final timeStr = Formatters.formatTime(order.createdAt);
 
     return Card(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),

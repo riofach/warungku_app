@@ -150,19 +150,13 @@ class Order {
     final String status = json['status']?.toString() ?? 'pending';
     
     // Parse dates with fallback. Ensure we treat them as UTC.
-    // We assume the DB returns UTC times (e.g. "2023-10-27 10:00:00").
-    // If we parse them as Local (default behavior if no Z), we fix it to be UTC.
-    // Display logic (Formatters.toWIB) handles the conversion to WIB.
+    // Supabase returns timestamptz as ISO 8601 with offset (e.g. "2026-04-19T06:54:00+00:00").
+    // DateTime.parse correctly reads the offset; .toUtc() converts the result to UTC
+    // regardless of device timezone. Display logic (Formatters.toWIB) adds +7 from UTC.
     DateTime parseUtcDate(dynamic value) {
       if (value == null) return DateTime.now();
       try {
-        final str = value.toString();
-        final temp = DateTime.parse(str);
-        // If parsed as local (no Z), force it to be UTC with same values
-        if (!temp.isUtc) {
-          return DateTime.utc(temp.year, temp.month, temp.day, temp.hour, temp.minute, temp.second);
-        }
-        return temp;
+        return DateTime.parse(value.toString()).toUtc();
       } catch (e) {
         return DateTime.now();
       }

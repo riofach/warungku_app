@@ -18,6 +18,8 @@ import '../../features/inventory/data/models/item_model.dart';
 import '../../features/reports/presentation/screens/reports_screen.dart';
 import '../../features/admin_management/presentation/screens/admin_list_screen.dart';
 import '../../features/transactions/presentation/screens/transaction_history_screen.dart';
+import '../../features/transactions/presentation/screens/transaction_detail_screen.dart';
+import '../../features/transactions/data/models/transaction_model.dart' as trx_model;
 import '../../features/pos/presentation/screens/transaction_success_screen.dart';
 import '../../features/pos/data/models/transaction_model.dart';
 import '../services/supabase_service.dart';
@@ -44,6 +46,7 @@ class AppRoutes {
   static const String reports = '/reports';
   static const String adminManagement = '/admin-management';
   static const String transactionHistory = '/transaction-history';
+  static const String transactionDetail = '/transactions/detail';
   static const String transactionSuccess = '/transaction-success';
 }
 
@@ -165,6 +168,17 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.transactionHistory,
         builder: (context, state) => const TransactionHistoryScreen(),
+      ),
+      GoRoute(
+        path: '${AppRoutes.transactionDetail}/:id',
+        redirect: (context, state) {
+          if (state.extra == null) return AppRoutes.reports;
+          return null;
+        },
+        builder: (context, state) {
+          final transaction = state.extra as trx_model.Transaction;
+          return TransactionDetailScreen(transaction: transaction);
+        },
       ),
       GoRoute(
         path: AppRoutes.transactionSuccess,

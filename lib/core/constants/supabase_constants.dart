@@ -10,7 +10,6 @@ class SupabaseConstants {
   
   static const String tableCategories = 'categories';
   static const String tableItems = 'items';
-  static const String tableHousingBlocks = 'housing_blocks';
   static const String tableOrders = 'orders';
   static const String tableOrderItems = 'order_items';
   static const String tableTransactions = 'transactions';
@@ -49,7 +48,7 @@ class SupabaseConstants {
   // ===========================================
   
   static const String colCode = 'code';
-  static const String colHousingBlockId = 'housing_block_id';
+  static const String colBlockAddress = 'block_address';
   static const String colCustomerName = 'customer_name';
   static const String colPaymentMethod = 'payment_method';
   static const String colDeliveryType = 'delivery_type';
@@ -102,10 +101,9 @@ class SupabaseConstants {
     category:categories(id, name)
   ''';
 
-  /// Select orders with housing block and items
+  /// Select orders with items
   static const String selectOrdersWithDetails = '''
     *,
-    housing_block:housing_blocks(id, name),
     order_items(
       *,
       item:items(id, name, image_url)

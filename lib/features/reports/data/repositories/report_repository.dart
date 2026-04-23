@@ -197,7 +197,7 @@ class ReportRepository {
 
       final response = await _supabase
           .from('orders')
-          .select('*, housing_block:housing_blocks(id, name)')
+          .select('*')
           .gte('created_at', startShifted.toUtc().toIso8601String())
           .lte('created_at', endShifted.toUtc().toIso8601String())
           .order('created_at', ascending: false);

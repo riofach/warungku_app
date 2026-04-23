@@ -62,7 +62,7 @@ class OrderCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    order.housingBlockName ?? 'Tanpa Lokasi',
+                    order.blockAddress ?? 'Tanpa Lokasi',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: AppColors.textSecondary,
                         ),

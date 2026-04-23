@@ -49,12 +49,6 @@ class SettingsScreen extends ConsumerWidget {
             subtitle: 'Kelola kategori barang',
             onTap: () => context.push(AppRoutes.categories),
           ),
-          SettingsTile(
-            icon: Icons.location_city_outlined,
-            title: 'Blok Perumahan',
-            subtitle: 'Kelola blok untuk delivery',
-            onTap: () => context.push(AppRoutes.housingBlocks),
-          ),
 
           // Reports section
           const _SectionHeader(title: 'Laporan'),

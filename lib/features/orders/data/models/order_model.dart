@@ -98,8 +98,7 @@ enum OrderStatus {
 class Order {
   final String id;
   final String code;
-  final String? housingBlockId;
-  final String? housingBlockName;
+  final String? blockAddress;
   final String customerName;
   final String paymentMethod;
   final String deliveryType;
@@ -113,8 +112,7 @@ class Order {
   const Order({
     required this.id,
     required this.code,
-    this.housingBlockId,
-    this.housingBlockName,
+    this.blockAddress,
     required this.customerName,
     required this.paymentMethod,
     required this.deliveryType,
@@ -127,12 +125,6 @@ class Order {
   });
   
   factory Order.fromJson(Map<String, dynamic> json) {
-    // Handle nested housing_block object
-    String? blockName;
-    if (json['housing_block'] != null) {
-      blockName = json['housing_block']['name'] as String?;
-    }
-
     // Handle nested order_items
     List<OrderItem> orderItems = [];
     if (json['order_items'] != null) {
@@ -168,8 +160,7 @@ class Order {
     return Order(
       id: id,
       code: code,
-      housingBlockId: json['housing_block_id']?.toString(),
-      housingBlockName: blockName,
+      blockAddress: json['block_address']?.toString(),
       customerName: customerName,
       paymentMethod: paymentMethod,
       deliveryType: deliveryType,
@@ -188,8 +179,7 @@ class Order {
   Order copyWith({
     String? id,
     String? code,
-    String? housingBlockId,
-    String? housingBlockName,
+    String? blockAddress,
     String? customerName,
     String? paymentMethod,
     String? deliveryType,
@@ -203,8 +193,7 @@ class Order {
     return Order(
       id: id ?? this.id,
       code: code ?? this.code,
-      housingBlockId: housingBlockId ?? this.housingBlockId,
-      housingBlockName: housingBlockName ?? this.housingBlockName,
+      blockAddress: blockAddress ?? this.blockAddress,
       customerName: customerName ?? this.customerName,
       paymentMethod: paymentMethod ?? this.paymentMethod,
       deliveryType: deliveryType ?? this.deliveryType,

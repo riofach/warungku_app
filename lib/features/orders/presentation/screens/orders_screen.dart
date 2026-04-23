@@ -9,7 +9,6 @@ import '../../../../core/widgets/connection_status_indicator.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/error_widget.dart';
 import '../../../../core/widgets/loading_widget.dart';
-import '../../../../features/inventory/data/providers/housing_blocks_provider.dart';
 import '../../../../core/services/realtime_connection_monitor.dart';
 import '../../data/models/order_model.dart';
 import '../../data/providers/orders_provider.dart';
@@ -32,11 +31,6 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
-
-    // Ensure housing blocks are loaded for mapping names
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(housingBlockListNotifierProvider.notifier).loadBlocks();
-    });
   }
 
   @override

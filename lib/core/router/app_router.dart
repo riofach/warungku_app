@@ -13,7 +13,6 @@ import '../../features/settings/presentation/screens/delivery_settings_screen.da
 import '../../features/inventory/presentation/screens/items_screen.dart';
 import '../../features/inventory/presentation/screens/item_form_screen.dart';
 import '../../features/inventory/presentation/screens/categories_screen.dart';
-import '../../features/inventory/presentation/screens/housing_blocks_screen.dart';
 import '../../features/inventory/data/models/item_model.dart';
 import '../../features/reports/presentation/screens/reports_screen.dart';
 import '../../features/admin_management/presentation/screens/admin_list_screen.dart';
@@ -42,7 +41,6 @@ class AppRoutes {
   static const String itemAdd = '/items/add';
   static const String itemEdit = '/items/edit'; // Story 3.5: Edit route base
   static const String categories = '/categories';
-  static const String housingBlocks = '/housing-blocks';
   static const String reports = '/reports';
   static const String adminManagement = '/admin-management';
   static const String transactionHistory = '/transaction-history';
@@ -155,10 +153,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.categories,
         builder: (context, state) => const CategoriesScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.housingBlocks,
-        builder: (context, state) => const HousingBlocksScreen(),
       ),
       // AppRoutes.reports moved to ShellRoute
       GoRoute(

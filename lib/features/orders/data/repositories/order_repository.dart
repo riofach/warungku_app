@@ -25,10 +25,7 @@ class OrderRepository {
     try {
       final response = await _supabase
           .from(SupabaseConstants.tableOrders)
-          .select('''
-            *,
-            housing_block:housing_blocks(id, name)
-          ''')
+          .select('*')
           .inFilter('status', ['pending', 'paid'])
           .order('created_at', ascending: false)
           .limit(limit)
@@ -41,16 +38,13 @@ class OrderRepository {
     }
   }
 
-  /// Get all orders with housing block data
+  /// Get all orders
   /// Used for initial fetch and polling fallback
   Future<List<Order>> getOrders({int limit = 50}) async {
     try {
       final response = await _supabase
           .from(SupabaseConstants.tableOrders)
-          .select('''
-            *,
-            housing_block:housing_blocks(id, name)
-          ''')
+          .select('*')
           .order('created_at', ascending: false)
           .limit(limit)
           .timeout(_timeout);
@@ -62,14 +56,13 @@ class OrderRepository {
     }
   }
 
-  /// Get order by ID with full details (items, housing block)
+  /// Get order by ID with full details (items)
   Future<Order> getOrderById(String orderId) async {
     try {
       final response = await _supabase
           .from(SupabaseConstants.tableOrders)
           .select('''
             *,
-            housing_block:housing_blocks(id, name),
             order_items:order_items(
               *,
               items:items(name, image_url)
@@ -85,17 +78,13 @@ class OrderRepository {
     }
   }
 
-  /// Get orders stream with server-side join for housing blocks
+  /// Get orders stream
   /// Uses periodic refresh with server-side join instead of realtime stream
-  /// to ensure housing block data is always available
   Stream<List<Order>> getOrdersStream() async* {
-    // Initial fetch with server-side join
+    // Initial fetch
     final initialOrders = await _supabase
         .from(SupabaseConstants.tableOrders)
-        .select('''
-          *,
-          housing_block:housing_blocks(id, name)
-        ''')
+        .select('*')
         .order('created_at', ascending: false)
         .limit(50) // Limit to 50 recent orders for performance
         .timeout(_timeout);
@@ -104,13 +93,10 @@ class OrderRepository {
 
     // Listen to realtime changes for updates
     await for (final payload in getOrdersRealtimeStream()) {
-      // On any change, re-fetch with join to get complete data
+      // On any change, re-fetch to get complete data
       final refreshedOrders = await _supabase
           .from(SupabaseConstants.tableOrders)
-          .select('''
-            *,
-            housing_block:housing_blocks(id, name)
-          ''')
+          .select('*')
           .order('created_at', ascending: false)
           .limit(50) // Limit to 50 recent orders for performance
           .timeout(_timeout);
@@ -298,23 +284,7 @@ class OrderRepository {
     final itemPrice = itemResponse[SupabaseConstants.colSellPrice] as int;
     final itemName = itemResponse[SupabaseConstants.colName] as String;
 
-    // 2. Fetch a random housing block for valid FK constraint
-    final housingBlockResponse = await _supabase
-        .from(SupabaseConstants.tableHousingBlocks)
-        .select(SupabaseConstants.colId)
-        .limit(1)
-        .maybeSingle();
-
-    if (housingBlockResponse == null) {
-      throw Exception(
-        'Tidak ada housing block di database. Tambahkan housing block terlebih dahulu.',
-      );
-    }
-
-    final housingBlockId =
-        housingBlockResponse[SupabaseConstants.colId] as String;
-
-    // 3. Prepare dummy order data
+    // 2. Prepare dummy order data
     final now = DateTime.now();
     final timestamp = now.millisecondsSinceEpoch;
     // WRG-SIM-HHmmss-fff (Unique enough for testing)
@@ -326,7 +296,7 @@ class OrderRepository {
     final qty = 1 + (now.second % 3); // 1-3 items
     final total = itemPrice * qty;
 
-    // 4. Insert Order with valid housing_block_id
+    // 3. Insert Order with block_address
     final orderResponse = await _supabase
         .from(SupabaseConstants.tableOrders)
         .insert({
@@ -337,15 +307,14 @@ class OrderRepository {
           SupabaseConstants.colStatus:
               'paid', // Trigger "New Order" flow immediately
           SupabaseConstants.colTotal: total,
-          SupabaseConstants.colHousingBlockId:
-              housingBlockId, // Valid FK to housing_blocks
+          SupabaseConstants.colBlockAddress: 'U1/01', // Simulated address
         })
         .select()
         .single();
 
     final orderId = orderResponse[SupabaseConstants.colId] as String;
 
-    // 5. Insert Order Items
+    // 4. Insert Order Items
     await _supabase.from(SupabaseConstants.tableOrderItems).insert({
       SupabaseConstants.colOrderId: orderId,
       SupabaseConstants.colItemId: itemId,

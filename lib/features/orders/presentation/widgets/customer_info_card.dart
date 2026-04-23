@@ -24,7 +24,7 @@ class CustomerInfoCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           _buildRow('Nama Pelanggan', order.customerName),
           const Divider(height: AppSpacing.lg),
-          _buildRow('Blok Rumah', order.housingBlockName ?? '-'),
+          _buildRow('Blok Rumah', order.blockAddress ?? '-'),
           const Divider(height: AppSpacing.lg),
           _buildRow('Tipe Pengiriman', order.deliveryType == 'delivery' ? 'Diantar' : 'Ambil Sendiri'),
           const Divider(height: AppSpacing.lg),

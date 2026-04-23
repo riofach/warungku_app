@@ -45,7 +45,7 @@ class NewOrderCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     // Customer name and block
                     Text(
-                      '${order.customerName}${order.housingBlockName != null ? ' - ${order.housingBlockName}' : ''}',
+                      '${order.customerName}${order.blockAddress != null ? ' - ${order.blockAddress}' : ''}',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: AppColors.textSecondary,
                           ),

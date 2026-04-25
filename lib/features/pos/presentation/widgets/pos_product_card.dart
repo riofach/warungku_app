@@ -6,10 +6,9 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../inventory/data/models/item_model.dart';
+import '../../../inventory/presentation/widgets/unit_picker_bottom_sheet.dart';
 import '../../data/providers/cart_provider.dart';
 
-/// Product card widget for POS screen
-/// Displays item information with add to cart functionality
 class PosProductCard extends ConsumerWidget {
   final Item item;
   final VoidCallback? onAddToCart;
@@ -22,10 +21,23 @@ class PosProductCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isOutOfStock = item.stock == 0;
     final cartState = ref.watch(cartNotifierProvider);
-    final quantityInCart = cartState.getQuantity(item.id);
-    final canAddMore = ref.read(cartNotifierProvider.notifier).canAddMore(item.id);
+
+    // For has_units: item is "out of stock" when all active units have 0 available
+    final bool isOutOfStock = item.hasUnits
+        ? item.activeUnits.every((u) => u.availableFrom(item.stock) == 0)
+        : item.stock == 0;
+
+    // For has_units: sum quantity of all cart entries for this item
+    final int quantityInCart = item.hasUnits
+        ? cartState.items
+            .where((ci) => ci.item.id == item.id)
+            .fold(0, (sum, ci) => sum + ci.quantity)
+        : cartState.getQuantityByKey(item.id);
+
+    final bool canAddMore = item.hasUnits
+        ? !isOutOfStock
+        : ref.read(cartNotifierProvider.notifier).canAddMore(item.id);
 
     return Card(
       elevation: 2,
@@ -44,54 +56,40 @@ class PosProductCard extends ConsumerWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  // Image
                   _buildProductImage(),
-
-                  // Stock badge
                   Positioned(
                     top: AppSpacing.xs,
                     right: AppSpacing.xs,
                     child: _buildStockBadge(),
                   ),
-
-                  // Out of stock overlay
                   if (isOutOfStock)
                     Container(
                       color: Colors.black.withValues(alpha: 0.3),
                       child: const Center(
-                        child: Text(
-                          'Habis',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
+                        child: Text('Habis',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16)),
                       ),
                     ),
-
-                  // Quantity in cart indicator
                   if (quantityInCart > 0)
                     Positioned(
                       top: AppSpacing.xs,
                       left: AppSpacing.xs,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.sm,
-                          vertical: AppSpacing.xs,
-                        ),
+                            horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
                         decoration: BoxDecoration(
                           color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                          borderRadius:
+                              BorderRadius.circular(AppSpacing.radiusSm),
                         ),
-                        child: Text(
-                          '$quantityInCart',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
+                        child: Text('$quantityInCart',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12)),
                       ),
                     ),
                 ],
@@ -105,45 +103,48 @@ class PosProductCard extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Product name
-                    Text(
-                      item.name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w500,
-                          ),
-                    ),
+                    Text(item.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyMedium
+                            ?.copyWith(fontWeight: FontWeight.w500)),
                     const Spacer(),
-                    // Price and add button row
                     Row(
                       children: [
                         Expanded(
                           child: Text(
-                            Formatters.formatRupiah(item.sellPrice),
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.primary,
-                                ),
+                            // has_units: show "Mulai Rp X.XXX"
+                            item.hasUnits && item.activeUnits.isNotEmpty
+                                ? 'Mulai ${Formatters.formatRupiah(item.activeUnits.map((u) => u.sellPrice).reduce((a, b) => a < b ? a : b))}'
+                                : Formatters.formatRupiah(item.sellPrice),
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.primary),
                           ),
                         ),
-                        // Add button
                         SizedBox(
                           width: 32,
                           height: 32,
                           child: IconButton.filled(
                             onPressed: isOutOfStock || !canAddMore
                                 ? null
-                                : () {
-                                    ref.read(cartNotifierProvider.notifier).addItem(item);
-                                    onAddToCart?.call();
-                                  },
-                            icon: const Icon(Icons.add, size: 16),
+                                : () => _onAddPressed(context, ref),
+                            icon: Icon(
+                                item.hasUnits
+                                    ? Icons.tune
+                                    : Icons.add,
+                                size: 16),
                             padding: EdgeInsets.zero,
                             style: IconButton.styleFrom(
-                              backgroundColor: isOutOfStock || !canAddMore
-                                  ? AppColors.textTertiary
-                                  : AppColors.primary,
+                              backgroundColor:
+                                  isOutOfStock || !canAddMore
+                                      ? AppColors.textTertiary
+                                      : AppColors.primary,
                               foregroundColor: Colors.white,
                             ),
                           ),
@@ -160,6 +161,15 @@ class PosProductCard extends ConsumerWidget {
     );
   }
 
+  void _onAddPressed(BuildContext context, WidgetRef ref) {
+    if (item.hasUnits) {
+      showUnitPicker(context, item);
+    } else {
+      ref.read(cartNotifierProvider.notifier).addItem(item);
+      onAddToCart?.call();
+    }
+  }
+
   Widget _buildProductImage() {
     if (item.imageUrl != null && item.imageUrl!.isNotEmpty) {
       return CachedNetworkImage(
@@ -167,9 +177,7 @@ class PosProductCard extends ConsumerWidget {
         fit: BoxFit.cover,
         placeholder: (context, url) => Container(
           color: AppColors.backgroundDark,
-          child: const Center(
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
+          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
         ),
         errorWidget: (context, url, error) => _buildPlaceholderImage(),
       );
@@ -181,11 +189,8 @@ class PosProductCard extends ConsumerWidget {
     return Container(
       color: AppColors.backgroundDark,
       child: const Center(
-        child: Icon(
-          Icons.inventory_2_outlined,
-          size: 40,
-          color: AppColors.textTertiary,
-        ),
+        child: Icon(Icons.inventory_2_outlined,
+            size: 40, color: AppColors.textTertiary),
       ),
     );
   }
@@ -194,20 +199,15 @@ class PosProductCard extends ConsumerWidget {
     final status = item.stockStatus;
     return Container(
       padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.xs,
-      ),
+          horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
       decoration: BoxDecoration(
         color: status.color.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
       ),
       child: Text(
-        item.stock == 0 ? 'Habis' : '${item.stock}',
+        item.hasUnits ? item.displayStock : (item.stock == 0 ? 'Habis' : '${item.stock}'),
         style: const TextStyle(
-          color: Colors.white,
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-        ),
+            color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
       ),
     );
   }

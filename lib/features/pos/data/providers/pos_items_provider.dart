@@ -68,7 +68,7 @@ class PosItemsNotifier extends AsyncNotifier<List<Item>> {
       // Only load active items, sorted by name
       final response = await supabase
           .from('items')
-          .select('*, categories(id, name)')
+          .select('*, categories(id, name), item_units(*)')
           .eq('is_active', true)
           .order('name', ascending: true);
 

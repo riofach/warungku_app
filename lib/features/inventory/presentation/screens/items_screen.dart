@@ -63,10 +63,6 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
     await ref.read(itemListNotifierProvider.notifier).refresh();
   }
 
-  void _navigateToAddItem() {
-    context.push(AppRoutes.itemAdd);
-  }
-
   /// Navigate to edit item screen (Story 3.5 - AC1)
   /// Uses context.push with item data via extra parameter
   void _navigateToEditItem(Item item) {
@@ -134,10 +130,6 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _navigateToAddItem,
-        child: const Icon(Icons.add),
-      ),
     );
   }
 
@@ -170,9 +162,7 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
       return EmptyStateWidget(
         icon: Icons.inventory_2_outlined,
         title: 'Belum ada barang',
-        subtitle: 'Tap + untuk menambahkan barang pertama',
-        actionLabel: 'Tambah Barang',
-        onAction: _navigateToAddItem,
+        subtitle: 'Pergi ke Menu → Input Pembelian untuk menambah barang baru',
       );
     }
 

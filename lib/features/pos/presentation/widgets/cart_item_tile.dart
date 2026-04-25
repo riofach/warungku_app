@@ -74,7 +74,7 @@ class CartItemTile extends ConsumerWidget {
                   ),
                 ),
                 Text(
-                  Formatters.formatRupiah(item.sellPrice),
+                  Formatters.formatRupiah(cartItem.sellPrice),
                   style: const TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 12,
@@ -115,8 +115,8 @@ class CartItemTile extends ConsumerWidget {
   }
 
   Widget _buildQuantityStepper(BuildContext context, WidgetRef ref) {
-    final canIncrement = cartItem.quantity < cartItem.item.stock;
-    
+    final canIncrement = ref.read(cartNotifierProvider.notifier).canAddMore(cartItem.cartKey);
+
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: AppColors.border),
@@ -130,7 +130,7 @@ class CartItemTile extends ConsumerWidget {
             onPressed: cartItem.quantity > 1
                 ? () {
                     ref.read(cartNotifierProvider.notifier)
-                        .decrementQuantity(cartItem.item.id);
+                        .decrementQuantity(cartItem.cartKey);
                   }
                 : null,
           ),
@@ -147,9 +147,9 @@ class CartItemTile extends ConsumerWidget {
             onPressed: canIncrement
                 ? () {
                     ref.read(cartNotifierProvider.notifier)
-                        .incrementQuantity(cartItem.item.id);
+                        .incrementQuantity(cartItem.cartKey);
                   }
-                : null, // Disabled when at stock limit (AC #6)
+                : null,
           ),
         ],
       ),
@@ -181,7 +181,7 @@ class CartItemTile extends ConsumerWidget {
     );
 
     if (confirmed == true) {
-      ref.read(cartNotifierProvider.notifier).removeItem(cartItem.item.id);
+      ref.read(cartNotifierProvider.notifier).removeItem(cartItem.cartKey);
     }
   }
 }

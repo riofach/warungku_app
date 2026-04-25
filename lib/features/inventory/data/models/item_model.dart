@@ -1,37 +1,23 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
+import 'item_unit_model.dart';
 
-/// Sentinel object for copyWith nullable field handling
 const Object _undefined = Object();
 
-/// Stock status enum for visual indicators
-/// Determines the color and label of stock badges
-enum StockStatus {
-  /// Stock is above threshold - normal level
-  normal,
+enum StockStatus { normal, low, outOfStock }
 
-  /// Stock is at or below threshold - low level warning
-  low,
-
-  /// Stock is zero - out of stock critical
-  outOfStock,
-}
-
-/// Extension on StockStatus for color and label helpers
 extension StockStatusExtension on StockStatus {
-  /// Get the color for this stock status
   Color get color {
     switch (this) {
       case StockStatus.normal:
-        return AppColors.stockSafe; // Green #10B981
+        return AppColors.stockSafe;
       case StockStatus.low:
-        return AppColors.stockWarning; // Yellow #F59E0B
+        return AppColors.stockWarning;
       case StockStatus.outOfStock:
-        return AppColors.stockCritical; // Red #EF4444
+        return AppColors.stockCritical;
     }
   }
 
-  /// Get the Indonesian label for this stock status
   String get label {
     switch (this) {
       case StockStatus.normal:
@@ -43,7 +29,6 @@ extension StockStatusExtension on StockStatus {
     }
   }
 
-  /// Get the icon for this stock status
   IconData get icon {
     switch (this) {
       case StockStatus.normal:
@@ -56,8 +41,6 @@ extension StockStatusExtension on StockStatus {
   }
 }
 
-/// Item model for inventory management
-/// Represents a product stored in the items table
 class Item {
   final String id;
   final String? categoryId;
@@ -68,10 +51,11 @@ class Item {
   final int stockThreshold;
   final String? imageUrl;
   final bool isActive;
+  final bool hasUnits;
+  final String baseUnit;
+  final List<ItemUnit> units;
   final DateTime createdAt;
   final DateTime updatedAt;
-
-  /// Optional: Category name from join query
   final String? categoryName;
 
   const Item({
@@ -84,27 +68,52 @@ class Item {
     this.stockThreshold = 10,
     this.imageUrl,
     this.isActive = true,
+    this.hasUnits = false,
+    this.baseUnit = 'pcs',
+    this.units = const [],
     required this.createdAt,
     required this.updatedAt,
     this.categoryName,
   });
 
-  /// Computed property for stock status
-  /// Determines visual indicator based on stock vs threshold
   StockStatus get stockStatus {
     if (stock == 0) return StockStatus.outOfStock;
     if (stock <= stockThreshold) return StockStatus.low;
     return StockStatus.normal;
   }
 
-  /// Create Item from Supabase JSON response
-  /// Handles nested category from join query:
-  /// select('*, categories(name)')
+  List<ItemUnit> get activeUnits =>
+      units.where((u) => u.isActive).toList()
+        ..sort((a, b) => b.quantityBase.compareTo(a.quantityBase));
+
+  /// Display stock string: "15,0 Kg" for gram items, "50 pcs" otherwise
+  String get displayStock {
+    if (hasUnits && baseUnit == 'gram') {
+      return '${(stock / 1000).toStringAsFixed(1).replaceAll('.', ',')} Kg';
+    }
+    return '$stock $baseUnit';
+  }
+
+  /// Display unit label for input forms (e.g. "Kg" for gram items)
+  String get inputUnitLabel {
+    if (baseUnit == 'gram') return 'Kg';
+    return baseUnit;
+  }
+
+  /// Factor to convert display input → stored base unit (1000 for gram→Kg)
+  int get inputToBaseMultiplier => baseUnit == 'gram' ? 1000 : 1;
+
   factory Item.fromJson(Map<String, dynamic> json) {
-    // Handle nested category from join
     String? catName;
     if (json['categories'] != null && json['categories'] is Map) {
       catName = json['categories']['name'] as String?;
+    }
+
+    final unitsList = <ItemUnit>[];
+    if (json['item_units'] != null && json['item_units'] is List) {
+      for (final u in json['item_units'] as List) {
+        unitsList.add(ItemUnit.fromJson(u as Map<String, dynamic>));
+      }
     }
 
     return Item(
@@ -117,6 +126,9 @@ class Item {
       stockThreshold: json['stock_threshold'] as int? ?? 10,
       imageUrl: json['image_url'] as String?,
       isActive: json['is_active'] as bool? ?? true,
+      hasUnits: json['has_units'] as bool? ?? false,
+      baseUnit: json['base_unit'] as String? ?? 'pcs',
+      units: unitsList,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
           : DateTime.now(),
@@ -127,8 +139,6 @@ class Item {
     );
   }
 
-  /// Convert to JSON for API operations (insert/update)
-  /// Excludes id, created_at as those are managed by database
   Map<String, dynamic> toJson() => {
         'category_id': categoryId,
         'name': name,
@@ -138,11 +148,10 @@ class Item {
         'stock_threshold': stockThreshold,
         'image_url': imageUrl,
         'is_active': isActive,
+        'has_units': hasUnits,
+        'base_unit': baseUnit,
       };
 
-  /// Create a copy with updated fields
-  /// Uses sentinel pattern to allow setting nullable fields to null
-  /// Example: item.copyWith(categoryId: null) will set categoryId to null
   Item copyWith({
     String? id,
     Object? categoryId = _undefined,
@@ -153,15 +162,17 @@ class Item {
     int? stockThreshold,
     Object? imageUrl = _undefined,
     bool? isActive,
+    bool? hasUnits,
+    String? baseUnit,
+    List<ItemUnit>? units,
     DateTime? createdAt,
     DateTime? updatedAt,
     Object? categoryName = _undefined,
   }) {
     return Item(
       id: id ?? this.id,
-      categoryId: categoryId == _undefined
-          ? this.categoryId
-          : categoryId as String?,
+      categoryId:
+          categoryId == _undefined ? this.categoryId : categoryId as String?,
       name: name ?? this.name,
       buyPrice: buyPrice ?? this.buyPrice,
       sellPrice: sellPrice ?? this.sellPrice,
@@ -169,6 +180,9 @@ class Item {
       stockThreshold: stockThreshold ?? this.stockThreshold,
       imageUrl: imageUrl == _undefined ? this.imageUrl : imageUrl as String?,
       isActive: isActive ?? this.isActive,
+      hasUnits: hasUnits ?? this.hasUnits,
+      baseUnit: baseUnit ?? this.baseUnit,
+      units: units ?? this.units,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       categoryName: categoryName == _undefined
@@ -179,7 +193,7 @@ class Item {
 
   @override
   String toString() =>
-      'Item(id: $id, name: $name, stock: $stock, status: $stockStatus)';
+      'Item(id: $id, name: $name, stock: $stock, hasUnits: $hasUnits)';
 
   @override
   bool operator ==(Object other) =>

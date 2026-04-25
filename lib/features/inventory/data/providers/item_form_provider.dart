@@ -136,6 +136,8 @@ class ItemFormNotifier extends Notifier<ItemFormState> {
     File? imageFile,
     bool imageRemoved = false,
     String? oldImageUrl, // Story 3.8 - AC1, AC2
+    bool hasUnits = false,
+    String baseUnit = 'pcs',
   }) async {
     // Set loading state
     state = state.copyWith(status: ItemFormStatus.loading);
@@ -156,6 +158,8 @@ class ItemFormNotifier extends Notifier<ItemFormState> {
         imageFile: imageFile,
         imageRemoved: imageRemoved,
         oldImageUrl: oldImageUrl, // Story 3.8 - Pass old image URL
+        hasUnits: hasUnits,
+        baseUnit: baseUnit,
       );
 
       // Set success state

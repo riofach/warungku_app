@@ -66,7 +66,9 @@ class ItemCard extends StatelessWidget {
 
                     // Sell Price
                     Text(
-                      Formatters.formatRupiah(item.sellPrice),
+                      item.hasUnits && item.activeUnits.isNotEmpty
+                          ? 'Mulai ${Formatters.formatRupiah(item.activeUnits.map((u) => u.sellPrice).reduce((a, b) => a < b ? a : b))}'
+                          : Formatters.formatRupiah(item.sellPrice),
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                             fontWeight: FontWeight.bold,
                             color: AppColors.primary,
@@ -210,7 +212,9 @@ class ItemCardCompact extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
       ),
       subtitle: Text(
-        Formatters.formatRupiah(item.sellPrice),
+        item.hasUnits && item.activeUnits.isNotEmpty
+            ? 'Mulai ${Formatters.formatRupiah(item.activeUnits.map((u) => u.sellPrice).reduce((a, b) => a < b ? a : b))}'
+            : Formatters.formatRupiah(item.sellPrice),
         style: TextStyle(
           color: AppColors.primary,
           fontWeight: FontWeight.w600,

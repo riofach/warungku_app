@@ -20,6 +20,7 @@ import '../../features/transactions/presentation/screens/transaction_history_scr
 import '../../features/transactions/presentation/screens/transaction_detail_screen.dart';
 import '../../features/transactions/data/models/transaction_model.dart' as trx_model;
 import '../../features/pos/presentation/screens/transaction_success_screen.dart';
+import '../../features/inventory/presentation/screens/purchase_flow_screen.dart';
 import '../../features/pos/data/models/transaction_model.dart';
 import '../services/supabase_service.dart';
 import '../widgets/main_scaffold.dart';
@@ -38,7 +39,6 @@ class AppRoutes {
   static const String settingsDelivery = '/settings/delivery'; // Story 8.3
   static const String settingsGeneral = '/settings/general'; // Story 8.3
   static const String items = '/items';
-  static const String itemAdd = '/items/add';
   static const String itemEdit = '/items/edit'; // Story 3.5: Edit route base
   static const String categories = '/categories';
   static const String reports = '/reports';
@@ -46,6 +46,7 @@ class AppRoutes {
   static const String transactionHistory = '/transaction-history';
   static const String transactionDetail = '/transactions/detail';
   static const String transactionSuccess = '/transaction-success';
+  static const String purchaseFlow = '/purchase';
 }
 
 /// Global key for root navigator
@@ -120,10 +121,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.items,
         builder: (context, state) => const ItemsScreen(),
       ),
-      GoRoute(
-        path: AppRoutes.itemAdd,
-        builder: (context, state) => const ItemFormScreen(),
-      ),
       // Story 3.5: Edit item route (AC1, AC5)
       // Path: /items/edit/:id
       // Item data passed via extra parameter
@@ -180,6 +177,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           final transaction = state.extra as Transaction;
           return TransactionSuccessScreen(transaction: transaction);
         },
+      ),
+      GoRoute(
+        path: AppRoutes.purchaseFlow,
+        builder: (context, state) => const PurchaseFlowScreen(),
       ),
       GoRoute(
         path: '${AppRoutes.orderDetail}/:id',

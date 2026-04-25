@@ -56,7 +56,7 @@ class ItemRepository {
     try {
       var query = SupabaseService.client
           .from('items')
-          .select('*, categories(name)')
+          .select('*, categories(name), item_units(*)')
           .eq('is_active', true);
 
       // Apply category filter if provided
@@ -102,7 +102,7 @@ class ItemRepository {
     try {
       final response = await SupabaseService.client
           .from('items')
-          .select('*, categories(name)')
+          .select('*, categories(name), item_units(*)')
           .eq('id', id)
           .maybeSingle()
           .timeout(_timeout);
@@ -320,6 +320,8 @@ class ItemRepository {
     required int stockThreshold,
     required bool isActive,
     String? imageUrl,
+    bool hasUnits = false,
+    String baseUnit = 'pcs',
   }) async {
     try {
       final data = {
@@ -331,6 +333,8 @@ class ItemRepository {
         'stock_threshold': stockThreshold,
         'is_active': isActive,
         'image_url': imageUrl,
+        'has_units': hasUnits,
+        'base_unit': baseUnit,
       };
 
       final response = await SupabaseService.client
@@ -376,6 +380,8 @@ class ItemRepository {
     File? imageFile,
     bool imageRemoved = false,
     String? oldImageUrl, // Story 3.8 - AC1, AC2
+    bool hasUnits = false,
+    String baseUnit = 'pcs',
   }) async {
     debugPrint('[UPDATE ITEM] Starting updateItem. id=$id, oldImageUrl=$oldImageUrl, imageRemoved=$imageRemoved, imageFile=${imageFile != null}');
 
@@ -416,6 +422,8 @@ class ItemRepository {
         'stock_threshold': stockThreshold,
         'is_active': isActive,
         'updated_at': DateTime.now().toIso8601String(),
+        'has_units': hasUnits,
+        'base_unit': baseUnit,
       };
 
       // Only include image_url if we're changing it (AC6, AC7)
@@ -449,6 +457,38 @@ class ItemRepository {
         throw Exception('Barang tidak ditemukan');
       }
       throw Exception('Gagal memperbarui barang: $e');
+    }
+  }
+
+  /// Update only unit-config fields (has_units, base_unit) and optionally image.
+  /// Used by PurchaseFlowScreen for existing items.
+  Future<void> updateItemUnitConfig({
+    required String id,
+    required bool hasUnits,
+    required String baseUnit,
+    String? imageUrl,
+    bool imageExplicitlyCleared = false,
+  }) async {
+    try {
+      final updateData = <String, dynamic>{
+        'has_units': hasUnits,
+        'base_unit': baseUnit,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+
+      if (imageExplicitlyCleared || imageUrl != null) {
+        updateData['image_url'] = imageUrl;
+      }
+
+      await SupabaseService.client
+          .from('items')
+          .update(updateData)
+          .eq('id', id)
+          .timeout(_timeout);
+    } on TimeoutException {
+      throw Exception('Koneksi timeout. Silakan coba lagi.');
+    } catch (e) {
+      throw Exception('Gagal memperbarui konfigurasi barang: $e');
     }
   }
 

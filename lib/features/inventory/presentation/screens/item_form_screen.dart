@@ -10,8 +10,11 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../data/models/item_model.dart';
+import '../../data/models/item_unit_draft.dart';
 import '../../data/providers/providers.dart';
+import '../../data/repositories/purchase_repository.dart';
 import '../widgets/photo_picker_section.dart';
+import '../widgets/unit_config_section.dart';
 
 /// Item Form Screen for adding new items or editing existing items
 /// Implements AC: 1 (Navigation), 2 (Form Fields), 8 (Cancel/Discard Flow)
@@ -54,6 +57,11 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
 
   // Story 3.8: Cache oldImageUrl to prevent data loss during form lifecycle (FIX for oldImageUrl=null issue)
   String? _cachedOldImageUrl;
+
+  // Unit config state (for edit mode)
+  bool _hasUnits = false;
+  String _baseUnit = 'pcs';
+  List<ItemUnitDraft> _unitDrafts = [];
 
   /// Whether the form is in edit mode
   bool get isEditMode => widget.item != null;
@@ -102,6 +110,9 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
     _isActive = item.isActive;
     _existingImageUrl = item.imageUrl;
     _currentDisplayStock = item.stock; // Initialize display stock (H4 fix)
+    _hasUnits = item.hasUnits;
+    _baseUnit = item.baseUnit;
+    _unitDrafts = item.activeUnits.map((u) => ItemUnitDraft.fromUnit(u)).toList();
   }
 
   /// Format number with thousand separator for display (e.g., 3500 -> "3.500")
@@ -513,6 +524,32 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
     });
   }
 
+  /// Sync item units to the database after a successful item save (Task 5)
+  Future<void> _syncUnitsAfterSave(String itemId) async {
+    if (!_hasUnits) return;
+    final purchaseRepo = PurchaseRepository();
+    for (final draft in _unitDrafts) {
+      if (draft.isNew) {
+        await purchaseRepo.createItemUnit(
+          itemId: itemId,
+          label: draft.label,
+          quantityBase: draft.quantityBase,
+          sellPrice: draft.sellPrice,
+          buyPrice: draft.buyPrice,
+        );
+      } else {
+        await purchaseRepo.updateItemUnit(
+          unitId: draft.id!,
+          label: draft.label,
+          quantityBase: draft.quantityBase,
+          sellPrice: draft.sellPrice,
+          buyPrice: draft.buyPrice,
+          isActive: draft.isActive,
+        );
+      }
+    }
+  }
+
   /// Submit form - create new item or update existing (AC5)
   void _onSubmit() {
     if (!_formKey.currentState!.validate()) return;
@@ -540,6 +577,8 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
             imageFile: _selectedImage,
             imageRemoved: _imageRemoved,
             oldImageUrl: oldImageUrlToPass, // Story 3.8 - Pass cached old image URL
+            hasUnits: _hasUnits,
+            baseUnit: _baseUnit,
           );
     } else {
       // Create new item
@@ -576,13 +615,27 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
     // Listen for form state changes
     ref.listen<ItemFormState>(itemFormNotifierProvider, (previous, next) {
       if (next.isSuccess) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(successMessage),
-            backgroundColor: AppColors.success,
-          ),
-        );
-        context.pop();
+        if (isEditMode && _hasUnits) {
+          _syncUnitsAfterSave(next.createdItemId!).then((_) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(successMessage),
+                  backgroundColor: AppColors.success,
+                ),
+              );
+              context.pop();
+            }
+          });
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(successMessage),
+              backgroundColor: AppColors.success,
+            ),
+          );
+          context.pop();
+        }
       } else if (next.hasError) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -689,66 +742,88 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
 
                 const SizedBox(height: AppSpacing.md),
 
-                // Harga Beli & Harga Jual (Row)
-                Row(
-                  children: [
-                    // Harga Beli
-                    Expanded(
-                      child: TextFormField(
-                        controller: _buyPriceController,
-                        decoration: const InputDecoration(
-                          labelText: 'Harga Beli *',
-                          hintText: '0',
-                          prefixText: 'Rp ',
-                          border: OutlineInputBorder(),
+                // Unit Configuration (edit mode)
+                if (isEditMode) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  const Text('Konfigurasi Satuan',
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                  const SizedBox(height: 8),
+                  UnitConfigSection(
+                    initialHasUnits: _hasUnits,
+                    initialBaseUnit: _baseUnit,
+                    initialUnits: _unitDrafts,
+                    onChanged: ({required hasUnits, required baseUnit, required units}) {
+                      setState(() {
+                        _hasUnits = hasUnits;
+                        _baseUnit = baseUnit;
+                        _unitDrafts = units;
+                      });
+                      _markDirty();
+                    },
+                  ),
+                ],
+
+                // Harga Beli & Harga Jual — hidden for has_units items (each variant has its own price)
+                if (!isEditMode || !_hasUnits)
+                  Row(
+                    children: [
+                      // Harga Beli
+                      Expanded(
+                        child: TextFormField(
+                          controller: _buyPriceController,
+                          decoration: const InputDecoration(
+                            labelText: 'Harga Beli *',
+                            hintText: '0',
+                            prefixText: 'Rp ',
+                            border: OutlineInputBorder(),
+                          ),
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            RupiahInputFormatter(),
+                          ],
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Harga beli wajib diisi';
+                            }
+                            final price = _parsePriceFromFormatted(value);
+                            if (price < 0) {
+                              return 'Harga beli tidak valid';
+                            }
+                            return null;
+                          },
                         ),
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                          RupiahInputFormatter(),
-                        ],
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Harga beli wajib diisi';
-                          }
-                          final price = _parsePriceFromFormatted(value);
-                          if (price < 0) {
-                            return 'Harga beli tidak valid';
-                          }
-                          return null;
-                        },
                       ),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    // Harga Jual
-                    Expanded(
-                      child: TextFormField(
-                        controller: _sellPriceController,
-                        decoration: const InputDecoration(
-                          labelText: 'Harga Jual *',
-                          hintText: '0',
-                          prefixText: 'Rp ',
-                          border: OutlineInputBorder(),
+                      const SizedBox(width: AppSpacing.md),
+                      // Harga Jual
+                      Expanded(
+                        child: TextFormField(
+                          controller: _sellPriceController,
+                          decoration: const InputDecoration(
+                            labelText: 'Harga Jual *',
+                            hintText: '0',
+                            prefixText: 'Rp ',
+                            border: OutlineInputBorder(),
+                          ),
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            RupiahInputFormatter(),
+                          ],
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Harga jual wajib diisi';
+                            }
+                            final price = _parsePriceFromFormatted(value);
+                            if (price <= 0) {
+                              return 'Harga jual harus lebih dari 0';
+                            }
+                            return null;
+                          },
                         ),
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                          RupiahInputFormatter(),
-                        ],
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Harga jual wajib diisi';
-                          }
-                          final price = _parsePriceFromFormatted(value);
-                          if (price <= 0) {
-                            return 'Harga jual harus lebih dari 0';
-                          }
-                          return null;
-                        },
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
 
                 const SizedBox(height: AppSpacing.md),
 
@@ -756,38 +831,67 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
                 Row(
                   children: [
                     // Stok
-                    Expanded(
-                      child: TextFormField(
-                        controller: _stockController,
-                        decoration: InputDecoration(
-                          labelText: isEditMode ? 'Stok' : 'Stok Awal',
-                          hintText: '0',
-                          border: const OutlineInputBorder(),
+                    if (isEditMode)
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[100],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey[300]!),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text('Stok Saat Ini',
+                                  style: TextStyle(fontSize: 12, color: Colors.grey)),
+                              const SizedBox(height: 4),
+                              Text(
+                                widget.item!.displayStock,
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              const Text('(via Input Pembelian)',
+                                  style: TextStyle(fontSize: 10, color: Colors.grey)),
+                            ],
+                          ),
                         ),
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
-                        validator: (value) {
-                          if (value != null && value.isNotEmpty) {
-                            final stock = int.tryParse(value);
-                            if (stock == null || stock < 0) {
-                              return 'Stok tidak boleh negatif';
+                      )
+                    else
+                      Expanded(
+                        child: TextFormField(
+                          controller: _stockController,
+                          decoration: const InputDecoration(
+                            labelText: 'Stok Awal',
+                            hintText: '0',
+                            border: OutlineInputBorder(),
+                          ),
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
+                          validator: (value) {
+                            if (value != null && value.isNotEmpty) {
+                              final stock = int.tryParse(value);
+                              if (stock == null || stock < 0) {
+                                return 'Stok tidak boleh negatif';
+                              }
                             }
-                          }
-                          return null;
-                        },
+                            return null;
+                          },
+                        ),
                       ),
-                    ),
                     const SizedBox(width: AppSpacing.md),
                     // Batas Stok Minimum
                     Expanded(
                       child: TextFormField(
                         controller: _thresholdController,
-                        decoration: const InputDecoration(
-                          labelText: 'Batas Minimum',
+                        decoration: InputDecoration(
+                          labelText: _hasUnits
+                              ? 'Batas Minimum ($_baseUnit)'
+                              : 'Batas Minimum',
                           hintText: '10',
-                          border: OutlineInputBorder(),
+                          border: const OutlineInputBorder(),
                         ),
                         keyboardType: TextInputType.number,
                         inputFormatters: [

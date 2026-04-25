@@ -44,6 +44,12 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => context.push(AppRoutes.items),
           ),
           SettingsTile(
+            icon: Icons.shopping_cart_checkout,
+            title: 'Input Pembelian',
+            subtitle: 'Catat pembelian & update stok',
+            onTap: () => context.push(AppRoutes.purchaseFlow),
+          ),
+          SettingsTile(
             icon: Icons.category_outlined,
             title: 'Kategori',
             subtitle: 'Kelola kategori barang',

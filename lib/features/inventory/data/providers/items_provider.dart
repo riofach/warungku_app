@@ -20,13 +20,11 @@ final searchQueryProvider = StateProvider<String>((ref) => '');
 /// null means "All categories" (Semua)
 final selectedCategoryFilterProvider = StateProvider<String?>((ref) => null);
 
+/// Controls whether item list queries should include inactive items.
+final includeInactiveItemsProvider = StateProvider<bool>((ref) => false);
+
 /// State for item list
-enum ItemListStatus {
-  initial,
-  loading,
-  loaded,
-  error,
-}
+enum ItemListStatus { initial, loading, loaded, error }
 
 class ItemListState {
   final ItemListStatus status;
@@ -39,26 +37,20 @@ class ItemListState {
     this.errorMessage,
   });
 
-  factory ItemListState.initial() => const ItemListState(
-        status: ItemListStatus.initial,
-        items: [],
-      );
+  factory ItemListState.initial() =>
+      const ItemListState(status: ItemListStatus.initial, items: []);
 
-  factory ItemListState.loading() => const ItemListState(
-        status: ItemListStatus.loading,
-        items: [],
-      );
+  factory ItemListState.loading() =>
+      const ItemListState(status: ItemListStatus.loading, items: []);
 
-  factory ItemListState.loaded(List<Item> items) => ItemListState(
-        status: ItemListStatus.loaded,
-        items: items,
-      );
+  factory ItemListState.loaded(List<Item> items) =>
+      ItemListState(status: ItemListStatus.loaded, items: items);
 
   factory ItemListState.error(String message) => ItemListState(
-        status: ItemListStatus.error,
-        items: [],
-        errorMessage: message,
-      );
+    status: ItemListStatus.error,
+    items: [],
+    errorMessage: message,
+  );
 
   bool get isLoading => status == ItemListStatus.loading;
   bool get hasError => status == ItemListStatus.error;
@@ -70,6 +62,7 @@ class ItemListState {
 class ItemListNotifier extends Notifier<ItemListState> {
   /// Track the current operation to prevent race conditions
   int _operationId = 0;
+  bool _includeInactive = false;
 
   @override
   ItemListState build() {
@@ -81,9 +74,12 @@ class ItemListNotifier extends Notifier<ItemListState> {
   Future<void> loadItems({
     String? searchQuery,
     String? categoryId,
+    bool includeInactive = false,
   }) async {
     // Increment operation ID to track this specific call
     final currentOperationId = ++_operationId;
+    _includeInactive = includeInactive;
+    ref.read(includeInactiveItemsProvider.notifier).state = includeInactive;
 
     state = ItemListState.loading();
 
@@ -92,6 +88,7 @@ class ItemListNotifier extends Notifier<ItemListState> {
       final items = await repository.getItems(
         searchQuery: searchQuery,
         categoryId: categoryId,
+        includeInactive: _includeInactive,
       );
 
       // Only update state if this is still the latest operation
@@ -115,26 +112,32 @@ class ItemListNotifier extends Notifier<ItemListState> {
     await loadItems(
       searchQuery: searchQuery.isNotEmpty ? searchQuery : null,
       categoryId: categoryId,
+      includeInactive: _includeInactive,
     );
   }
 
   /// Search items by name
-  Future<void> searchItems(String query) async {
+  Future<void> searchItems(String query, {bool includeInactive = false}) async {
     ref.read(searchQueryProvider.notifier).state = query;
     final categoryId = ref.read(selectedCategoryFilterProvider);
     await loadItems(
       searchQuery: query.isNotEmpty ? query : null,
       categoryId: categoryId,
+      includeInactive: includeInactive,
     );
   }
 
   /// Filter items by category
-  Future<void> filterByCategory(String? categoryId) async {
+  Future<void> filterByCategory(
+    String? categoryId, {
+    bool includeInactive = false,
+  }) async {
     ref.read(selectedCategoryFilterProvider.notifier).state = categoryId;
     final searchQuery = ref.read(searchQueryProvider);
     await loadItems(
       searchQuery: searchQuery.isNotEmpty ? searchQuery : null,
       categoryId: categoryId,
+      includeInactive: includeInactive,
     );
   }
 
@@ -142,6 +145,7 @@ class ItemListNotifier extends Notifier<ItemListState> {
   Future<void> applyFilters({
     String? searchQuery,
     String? categoryId,
+    bool includeInactive = false,
   }) async {
     if (searchQuery != null) {
       ref.read(searchQueryProvider.notifier).state = searchQuery;
@@ -152,44 +156,53 @@ class ItemListNotifier extends Notifier<ItemListState> {
     await loadItems(
       searchQuery: searchQuery ?? ref.read(searchQueryProvider),
       categoryId: categoryId ?? ref.read(selectedCategoryFilterProvider),
+      includeInactive: includeInactive,
     );
   }
 
   /// Clear all filters and reload
-  Future<void> clearFilters() async {
+  Future<void> clearFilters({bool includeInactive = false}) async {
     ref.read(searchQueryProvider.notifier).state = '';
     ref.read(selectedCategoryFilterProvider.notifier).state = null;
-    await loadItems();
+    await loadItems(includeInactive: includeInactive);
   }
 }
 
 /// Provider for ItemListNotifier
 final itemListNotifierProvider =
     NotifierProvider<ItemListNotifier, ItemListState>(() {
-  return ItemListNotifier();
-});
+      return ItemListNotifier();
+    });
 
 /// FutureProvider for items with automatic dependency on search and category
 /// This provider auto-refreshes when search query or category filter changes
-final filteredItemsProvider = FutureProvider.autoDispose<List<Item>>((ref) async {
+final filteredItemsProvider = FutureProvider.autoDispose<List<Item>>((
+  ref,
+) async {
   final repository = ref.watch(itemRepositoryProvider);
   final searchQuery = ref.watch(searchQueryProvider);
   final categoryId = ref.watch(selectedCategoryFilterProvider);
+  final includeInactive = ref.watch(includeInactiveItemsProvider);
 
   return repository.getItems(
     searchQuery: searchQuery.isNotEmpty ? searchQuery : null,
     categoryId: categoryId,
+    includeInactive: includeInactive,
   );
 });
 
 /// Provider for low stock items (for alerts/dashboard)
-final lowStockItemsProvider = FutureProvider.autoDispose<List<Item>>((ref) async {
+final lowStockItemsProvider = FutureProvider.autoDispose<List<Item>>((
+  ref,
+) async {
   final repository = ref.watch(itemRepositoryProvider);
   return repository.getLowStockItems();
 });
 
 /// Provider for out of stock items
-final outOfStockItemsProvider = FutureProvider.autoDispose<List<Item>>((ref) async {
+final outOfStockItemsProvider = FutureProvider.autoDispose<List<Item>>((
+  ref,
+) async {
   final repository = ref.watch(itemRepositoryProvider);
   return repository.getOutOfStockItems();
 });

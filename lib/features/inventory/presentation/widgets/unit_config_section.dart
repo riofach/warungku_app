@@ -13,6 +13,7 @@ class UnitConfigSection extends StatefulWidget {
   final bool initialHasUnits;
   final String initialBaseUnit;
   final List<ItemUnitDraft> initialUnits;
+  final bool showPriceFields;
   final void Function({
     required bool hasUnits,
     required String baseUnit,
@@ -25,6 +26,7 @@ class UnitConfigSection extends StatefulWidget {
     this.initialHasUnits = false,
     this.initialBaseUnit = 'pcs',
     this.initialUnits = const [],
+    this.showPriceFields = true,
     required this.onChanged,
   });
 
@@ -162,13 +164,21 @@ class _UnitConfigSectionState extends State<UnitConfigSection> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          if (!widget.showPriceFields) ...[
+            const SizedBox(height: 8),
+            const Text(
+              'Di langkah ini cukup isi label dan jumlah. Harga jual dan harga beli varian diatur setelah pembelian.',
+              style: TextStyle(color: Colors.grey, fontSize: 12),
+            ),
+            const SizedBox(height: 8),
+          ],
 
           ..._units.asMap().entries.map(
             (entry) => _UnitDraftTile(
               index: entry.key,
               draft: entry.value,
               baseUnit: _baseUnit,
+              showPriceFields: widget.showPriceFields,
               onUpdate: (updated) => _updateUnit(entry.key, updated),
               onRemove: () => _removeUnit(entry.key),
             ),
@@ -192,6 +202,7 @@ class _UnitDraftTile extends StatefulWidget {
   final int index;
   final ItemUnitDraft draft;
   final String baseUnit;
+  final bool showPriceFields;
   final ValueChanged<ItemUnitDraft> onUpdate;
   final VoidCallback onRemove;
 
@@ -199,6 +210,7 @@ class _UnitDraftTile extends StatefulWidget {
     required this.index,
     required this.draft,
     required this.baseUnit,
+    required this.showPriceFields,
     required this.onUpdate,
     required this.onRemove,
   });
@@ -244,8 +256,12 @@ class _UnitDraftTileState extends State<_UnitDraftTile> {
       widget.draft.copyWith(
         label: _labelCtrl.text,
         quantityBase: int.tryParse(_qtyCtrl.text) ?? 0,
-        sellPrice: int.tryParse(_priceCtrl.text.replaceAll('.', '')) ?? 0,
-        buyPrice: int.tryParse(_buyPriceCtrl.text.replaceAll('.', '')) ?? 0,
+        sellPrice: widget.showPriceFields
+            ? int.tryParse(_priceCtrl.text.replaceAll('.', '')) ?? 0
+            : widget.draft.sellPrice,
+        buyPrice: widget.showPriceFields
+            ? int.tryParse(_buyPriceCtrl.text.replaceAll('.', '')) ?? 0
+            : widget.draft.buyPrice,
       ),
     );
   }
@@ -320,37 +336,43 @@ class _UnitDraftTileState extends State<_UnitDraftTile> {
                     onChanged: (_) => _emitUpdate(),
                   ),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextFormField(
-                    controller: _priceCtrl,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    decoration: const InputDecoration(
-                      labelText: 'Harga Jual',
-                      prefixText: 'Rp ',
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                    onChanged: (_) => _emitUpdate(),
-                  ),
-                ),
               ],
             ),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _buyPriceCtrl,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: const InputDecoration(
-                labelText: 'Harga Beli',
-                prefixText: 'Rp ',
-                helperText: 'Sudah diatur sistem',
-                border: OutlineInputBorder(),
-                isDense: true,
+            if (widget.showPriceFields) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _priceCtrl,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      decoration: const InputDecoration(
+                        labelText: 'Harga Jual',
+                        prefixText: 'Rp ',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      onChanged: (_) => _emitUpdate(),
+                    ),
+                  ),
+                ],
               ),
-              onChanged: (_) => _emitUpdate(),
-            ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _buyPriceCtrl,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: const InputDecoration(
+                  labelText: 'Harga Beli',
+                  prefixText: 'Rp ',
+                  helperText: 'Sudah diatur sistem',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+                onChanged: (_) => _emitUpdate(),
+              ),
+            ],
           ],
         ),
       ),

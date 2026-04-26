@@ -78,9 +78,8 @@ class _PosScreenState extends ConsumerState<PosScreen> {
         minChildSize: 0.4,
         maxChildSize: 0.9,
         expand: false,
-        builder: (context, scrollController) => CartBottomSheet(
-          scrollController: scrollController,
-        ),
+        builder: (context, scrollController) =>
+            CartBottomSheet(scrollController: scrollController),
       ),
     );
   }
@@ -118,10 +117,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     });
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Kasir'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('Kasir'), elevation: 0),
       body: Column(
         children: [
           // Search bar
@@ -131,20 +127,16 @@ class _PosScreenState extends ConsumerState<PosScreen> {
           _buildCategoryChips(categoriesState.categories, selectedCategory),
 
           // Product grid
-          Expanded(
-            child: _buildProductGrid(itemsAsync, filteredItems),
-          ),
+          Expanded(child: _buildProductGrid(itemsAsync, filteredItems)),
         ],
       ),
       // Cart summary bar
       bottomNavigationBar: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         height: cartIsEmpty ? 0 : 70,
-        child: cartIsEmpty 
-            ? null 
-            : CartSummaryBar(
-                onTap: () => _showCartBottomSheet(context),
-              ),
+        child: cartIsEmpty
+            ? null
+            : CartSummaryBar(onTap: () => _showCartBottomSheet(context)),
       ),
     );
   }
@@ -180,7 +172,10 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     );
   }
 
-  Widget _buildCategoryChips(List<Category> categories, String? selectedCategory) {
+  Widget _buildCategoryChips(
+    List<Category> categories,
+    String? selectedCategory,
+  ) {
     return Container(
       color: Theme.of(context).colorScheme.surface,
       height: 52,
@@ -219,7 +214,13 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     );
   }
 
-  Widget _buildProductGrid(AsyncValue<List<dynamic>> itemsAsync, List filteredItems) {
+  Widget _buildProductGrid(
+    AsyncValue<List<dynamic>> itemsAsync,
+    List filteredItems,
+  ) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final gridAspectRatio = screenWidth < 380 ? 0.64 : 0.70;
+
     return itemsAsync.when(
       loading: () => const LoadingWidget(message: 'Memuat barang...'),
       error: (error, stack) => app_error.AppErrorWidget(
@@ -253,11 +254,11 @@ class _PosScreenState extends ConsumerState<PosScreen> {
           },
           child: GridView.builder(
             padding: const EdgeInsets.all(AppSpacing.md),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
               crossAxisSpacing: AppSpacing.sm,
               mainAxisSpacing: AppSpacing.sm,
-              childAspectRatio: 0.70, // Adjust based on card design
+              childAspectRatio: gridAspectRatio,
             ),
             itemCount: filteredItems.length,
             itemBuilder: (context, index) {
@@ -265,7 +266,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
               return PosProductCard(
                 item: item,
                 onAddToCart: () {
-                    // Feedback handled by listener above, but we can add success feedback here if needed
+                  // Feedback handled by listener above, but we can add success feedback here if needed
                 },
               );
             },

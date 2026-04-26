@@ -126,10 +126,14 @@ void main() {
 
       test('should accept both parameters together', () {
         expect(
-          () => repository.getItems(
-            searchQuery: 'test',
-            categoryId: 'cat-123',
-          ),
+          () => repository.getItems(searchQuery: 'test', categoryId: 'cat-123'),
+          throwsA(anything),
+        );
+      });
+
+      test('should accept includeInactive parameter', () {
+        expect(
+          () => repository.getItems(includeInactive: true),
           throwsA(anything),
         );
       });
@@ -137,10 +141,7 @@ void main() {
 
     group('searchItems convenience method', () {
       test('should accept query string', () {
-        expect(
-          () => repository.searchItems('test'),
-          throwsA(anything),
-        );
+        expect(() => repository.searchItems('test'), throwsA(anything));
       });
 
       test('should accept query with optional categoryId', () {
@@ -153,10 +154,7 @@ void main() {
 
     group('getItemById method', () {
       test('should accept string id', () {
-        expect(
-          () => repository.getItemById('item-123'),
-          throwsA(anything),
-        );
+        expect(() => repository.getItemById('item-123'), throwsA(anything));
       });
     });
 
@@ -190,7 +188,7 @@ void main() {
   group('ItemRepository error handling', () {
     test('should handle duplicate name errors in createItem', () async {
       final repository = ItemRepository();
-      
+
       // Attempting to create with same name should eventually throw duplicate error
       // We can't test actual Supabase behavior without mock, but we verify error handling exists
       expect(

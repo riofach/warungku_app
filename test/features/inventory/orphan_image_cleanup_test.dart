@@ -27,8 +27,12 @@ void main() {
         final result = ItemRepository.extractFilePathFromUrl(imageUrl);
 
         // Assert
-        expect(result,
-            equals('items/550e8400-e29b-41d4-a716-446655440000_1705807200000.jpg'));
+        expect(
+          result,
+          equals(
+            'items/550e8400-e29b-41d4-a716-446655440000_1705807200000.jpg',
+          ),
+        );
       });
 
       test('should extract file path with timestamp format (Task 5.13)', () {
@@ -75,8 +79,14 @@ void main() {
             'https://xxx.supabase.co/storage/v1/object/public/product-images/items/photo.webp';
 
         // Act & Assert
-        expect(ItemRepository.extractFilePathFromUrl(pngUrl), equals('items/photo.png'));
-        expect(ItemRepository.extractFilePathFromUrl(webpUrl), equals('items/photo.webp'));
+        expect(
+          ItemRepository.extractFilePathFromUrl(pngUrl),
+          equals('items/photo.png'),
+        );
+        expect(
+          ItemRepository.extractFilePathFromUrl(webpUrl),
+          equals('items/photo.webp'),
+        );
       });
 
       test('should handle URL with different Supabase project subdomain', () {
@@ -133,17 +143,20 @@ void main() {
         expect(result, isNull);
       });
 
-      test('should return null for URL with bucket name at end (no file path)', () {
-        // Arrange
-        const imageUrl =
-            'https://xxx.supabase.co/storage/v1/object/public/product-images';
+      test(
+        'should return null for URL with bucket name at end (no file path)',
+        () {
+          // Arrange
+          const imageUrl =
+              'https://xxx.supabase.co/storage/v1/object/public/product-images';
 
-        // Act
-        final result = ItemRepository.extractFilePathFromUrl(imageUrl);
+          // Act
+          final result = ItemRepository.extractFilePathFromUrl(imageUrl);
 
-        // Assert
-        expect(result, isNull);
-      });
+          // Assert
+          expect(result, isNull);
+        },
+      );
 
       test('should return null for malformed URL', () {
         // Arrange
@@ -169,7 +182,8 @@ void main() {
 
       test('should return null for relative path (not absolute URL)', () {
         // Arrange
-        const imageUrl = '/storage/v1/object/public/product-images/items/file.jpg';
+        const imageUrl =
+            '/storage/v1/object/public/product-images/items/file.jpg';
 
         // Act
         final result = ItemRepository.extractFilePathFromUrl(imageUrl);
@@ -209,31 +223,40 @@ void main() {
     // The actual Supabase calls are tested via integration tests on real device (Task 6.3)
 
     group('Input validation contracts', () {
-      test('deleteImage should return true for null imageUrl (nothing to delete)', () {
-        // Contract: When imageUrl is null, return true immediately (AC4)
-        // This is verified by examining the code - deleteImage returns true for null
-        const String? imageUrl = null;
-        
-        // Verify the contract: null URL means nothing to delete = success
-        expect(imageUrl == null, isTrue);
-      });
+      test(
+        'deleteImage should return true for null imageUrl (nothing to delete)',
+        () {
+          // Contract: When imageUrl is null, return true immediately (AC4)
+          // This is verified by examining the code - deleteImage returns true for null
+          const String? imageUrl = null;
 
-      test('deleteImage should return true for empty imageUrl (nothing to delete)', () {
-        // Contract: When imageUrl is empty, return true immediately (AC4)
-        const imageUrl = '';
-        
-        // Verify the contract: empty URL means nothing to delete = success
-        expect(imageUrl.isEmpty, isTrue);
-      });
+          // Verify the contract: null URL means nothing to delete = success
+          expect(imageUrl == null, isTrue);
+        },
+      );
 
-      test('deleteImage should return false when file path cannot be extracted', () {
-        // Contract: When URL doesn't contain bucket, return false (logged but not thrown)
-        const badUrl = 'https://example.com/random/path.jpg';
-        final extractedPath = ItemRepository.extractFilePathFromUrl(badUrl);
-        
-        // Verify the contract: bad URL = null path = return false
-        expect(extractedPath, isNull);
-      });
+      test(
+        'deleteImage should return true for empty imageUrl (nothing to delete)',
+        () {
+          // Contract: When imageUrl is empty, return true immediately (AC4)
+          const imageUrl = '';
+
+          // Verify the contract: empty URL means nothing to delete = success
+          expect(imageUrl.isEmpty, isTrue);
+        },
+      );
+
+      test(
+        'deleteImage should return false when file path cannot be extracted',
+        () {
+          // Contract: When URL doesn't contain bucket, return false (logged but not thrown)
+          const badUrl = 'https://example.com/random/path.jpg';
+          final extractedPath = ItemRepository.extractFilePathFromUrl(badUrl);
+
+          // Verify the contract: bad URL = null path = return false
+          expect(extractedPath, isNull);
+        },
+      );
     });
 
     group('Non-blocking behavior contracts (AC6)', () {
@@ -241,11 +264,11 @@ void main() {
         // Contract: Storage deletion errors are caught, logged, and return false
         // The method signature returns Future<bool>, not Future<void>
         // This allows callers to know if deletion succeeded without exceptions
-        
+
         // Verify by examining expected return type behavior
         const expectedOnSuccess = true;
         const expectedOnFailure = false;
-        
+
         expect(expectedOnSuccess, isTrue);
         expect(expectedOnFailure, isFalse);
       });
@@ -253,7 +276,7 @@ void main() {
       test('updateItem should complete even if old image deletion fails', () {
         // Contract: updateItem calls deleteImage but doesn't fail if storage delete fails
         // deleteImage returns bool, updateItem continues regardless of return value
-        
+
         // This is a design contract - verified by code review
         // The updateItem method awaits deleteImage but doesn't check its return value
         expect(true, isTrue); // Contract verified in code review
@@ -262,7 +285,7 @@ void main() {
       test('deleteItem should complete even if image deletion fails', () {
         // Contract: deleteItem calls deleteImage before soft delete
         // Soft delete proceeds regardless of storage deletion result
-        
+
         // This is a design contract - verified by code review
         expect(true, isTrue); // Contract verified in code review
       });
@@ -273,36 +296,39 @@ void main() {
     test('updateItem should accept oldImageUrl parameter', () {
       // Contract verification: The method signature includes oldImageUrl
       // This is verified by the fact that the code compiles with this parameter
-      
-      const oldImageUrl = 'https://xxx.supabase.co/storage/v1/object/public/product-images/items/old.jpg';
+
+      const oldImageUrl =
+          'https://xxx.supabase.co/storage/v1/object/public/product-images/items/old.jpg';
       expect(oldImageUrl, isNotEmpty);
     });
 
     test('old image should be deleted when new image is provided (AC1)', () {
       // Contract: When imageFile != null AND oldImageUrl != null
       // -> Call deleteImage(oldImageUrl) before uploadImage(imageFile)
-      
+
       // Verify by checking the path extraction works for old image URL
-      const oldImageUrl = 'https://xxx.supabase.co/storage/v1/object/public/product-images/items/old.jpg';
+      const oldImageUrl =
+          'https://xxx.supabase.co/storage/v1/object/public/product-images/items/old.jpg';
       final path = ItemRepository.extractFilePathFromUrl(oldImageUrl);
-      
+
       expect(path, equals('items/old.jpg'));
     });
 
     test('old image should be deleted when imageRemoved is true (AC2)', () {
       // Contract: When imageRemoved == true AND oldImageUrl != null
       // -> Call deleteImage(oldImageUrl) and set newImageUrl = null
-      
-      const oldImageUrl = 'https://xxx.supabase.co/storage/v1/object/public/product-images/items/to-remove.jpg';
+
+      const oldImageUrl =
+          'https://xxx.supabase.co/storage/v1/object/public/product-images/items/to-remove.jpg';
       final path = ItemRepository.extractFilePathFromUrl(oldImageUrl);
-      
+
       expect(path, equals('items/to-remove.jpg'));
     });
 
     test('no deletion when oldImageUrl is null (AC4)', () {
       // Contract: When oldImageUrl is null, deleteImage should not be called
       // Or if called, should return true immediately
-      
+
       final path = ItemRepository.extractFilePathFromUrl(null);
       expect(path, isNull);
     });
@@ -311,17 +337,19 @@ void main() {
   group('deleteItem image handling contracts (Story 3.8 - Task 3)', () {
     test('deleteItem should accept imageUrl parameter', () {
       // Contract verification: The method signature includes optional imageUrl
-      const imageUrl = 'https://xxx.supabase.co/storage/v1/object/public/product-images/items/test.jpg';
+      const imageUrl =
+          'https://xxx.supabase.co/storage/v1/object/public/product-images/items/test.jpg';
       expect(imageUrl, isNotEmpty);
     });
 
-    test('image should be deleted before soft delete (AC3)', () {
-      // Contract: deleteImage is called BEFORE setting is_active = false
-      // This ensures image is cleaned up even if soft delete fails
-      
-      const imageUrl = 'https://xxx.supabase.co/storage/v1/object/public/product-images/items/to-delete.jpg';
+    test('image should be deleted before hard delete (AC3)', () {
+      // Contract: deleteImage is called BEFORE deleting row data
+      // This ensures image is cleaned up even if item delete fails
+
+      const imageUrl =
+          'https://xxx.supabase.co/storage/v1/object/public/product-images/items/to-delete.jpg';
       final path = ItemRepository.extractFilePathFromUrl(imageUrl);
-      
+
       expect(path, equals('items/to-delete.jpg'));
     });
 
@@ -333,23 +361,28 @@ void main() {
   });
 
   group('ItemFormScreen data passing contracts (Story 3.8 - Task 4)', () {
-    test('cached oldImageUrl should preserve original value during form lifecycle', () {
-      // Contract: ItemFormScreen caches widget.item!.imageUrl in initState
-      // This prevents data loss if widget is rebuilt during async operations
-      
-      const originalImageUrl = 'https://xxx.supabase.co/storage/v1/object/public/product-images/items/original.jpg';
-      
-      // Simulate caching behavior
-      final cachedUrl = originalImageUrl;
-      
-      // Even if widget.item changes, cached value remains
-      expect(cachedUrl, equals(originalImageUrl));
-    });
+    test(
+      'cached oldImageUrl should preserve original value during form lifecycle',
+      () {
+        // Contract: ItemFormScreen caches widget.item!.imageUrl in initState
+        // This prevents data loss if widget is rebuilt during async operations
+
+        const originalImageUrl =
+            'https://xxx.supabase.co/storage/v1/object/public/product-images/items/original.jpg';
+
+        // Simulate caching behavior
+        final cachedUrl = originalImageUrl;
+
+        // Even if widget.item changes, cached value remains
+        expect(cachedUrl, equals(originalImageUrl));
+      },
+    );
 
     test('oldImageUrl should be passed to updateItem call', () {
       // Contract: When updating item, oldImageUrl from cache is passed to provider
-      const cachedOldImageUrl = 'https://xxx.supabase.co/storage/v1/object/public/product-images/items/cached.jpg';
-      
+      const cachedOldImageUrl =
+          'https://xxx.supabase.co/storage/v1/object/public/product-images/items/cached.jpg';
+
       // Verify path extraction works for the cached URL
       final path = ItemRepository.extractFilePathFromUrl(cachedOldImageUrl);
       expect(path, equals('items/cached.jpg'));
@@ -357,8 +390,9 @@ void main() {
 
     test('imageUrl should be passed to deleteItem call', () {
       // Contract: When deleting item, widget.item!.imageUrl is passed to provider
-      const itemImageUrl = 'https://xxx.supabase.co/storage/v1/object/public/product-images/items/to-delete.jpg';
-      
+      const itemImageUrl =
+          'https://xxx.supabase.co/storage/v1/object/public/product-images/items/to-delete.jpg';
+
       // Verify path extraction works
       final path = ItemRepository.extractFilePathFromUrl(itemImageUrl);
       expect(path, equals('items/to-delete.jpg'));
@@ -366,22 +400,33 @@ void main() {
   });
 
   group('Integration scenario contracts', () {
-    test('edit item → replace photo → old photo path extracted correctly (Task 5.14)', () {
-      // End-to-end flow verification:
-      // 1. Item has existing photo URL
-      // 2. User selects new photo
-      // 3. Old photo URL is passed to repository
-      // 4. Path is extracted correctly for deletion
-      
-      const oldPhotoUrl = 'https://xxx.supabase.co/storage/v1/object/public/product-images/items/550e8400-e29b-41d4-a716-446655440000_1705807200000.jpg';
-      
-      // Step 4: Path extraction
-      final extractedPath = ItemRepository.extractFilePathFromUrl(oldPhotoUrl);
-      
-      expect(extractedPath, equals('items/550e8400-e29b-41d4-a716-446655440000_1705807200000.jpg'));
-      expect(extractedPath, isNotNull);
-      expect(extractedPath!.startsWith('items/'), isTrue);
-    });
+    test(
+      'edit item → replace photo → old photo path extracted correctly (Task 5.14)',
+      () {
+        // End-to-end flow verification:
+        // 1. Item has existing photo URL
+        // 2. User selects new photo
+        // 3. Old photo URL is passed to repository
+        // 4. Path is extracted correctly for deletion
+
+        const oldPhotoUrl =
+            'https://xxx.supabase.co/storage/v1/object/public/product-images/items/550e8400-e29b-41d4-a716-446655440000_1705807200000.jpg';
+
+        // Step 4: Path extraction
+        final extractedPath = ItemRepository.extractFilePathFromUrl(
+          oldPhotoUrl,
+        );
+
+        expect(
+          extractedPath,
+          equals(
+            'items/550e8400-e29b-41d4-a716-446655440000_1705807200000.jpg',
+          ),
+        );
+        expect(extractedPath, isNotNull);
+        expect(extractedPath!.startsWith('items/'), isTrue);
+      },
+    );
 
     test('delete item → photo path extracted correctly (Task 5.15)', () {
       // End-to-end flow verification:
@@ -390,22 +435,24 @@ void main() {
       // 3. Photo URL is passed to repository
       // 4. Path is extracted correctly for deletion
       // 5. Item is soft deleted
-      
-      const photoUrl = 'https://xxx.supabase.co/storage/v1/object/public/product-images/items/item-photo-abc123.jpg';
-      
+
+      const photoUrl =
+          'https://xxx.supabase.co/storage/v1/object/public/product-images/items/item-photo-abc123.jpg';
+
       // Step 4: Path extraction
       final extractedPath = ItemRepository.extractFilePathFromUrl(photoUrl);
-      
+
       expect(extractedPath, equals('items/item-photo-abc123.jpg'));
       expect(extractedPath, isNotNull);
     });
 
     test('edit item → remove photo → old photo path extracted correctly', () {
       // Flow: User taps "Hapus Foto" in edit mode
-      const oldPhotoUrl = 'https://xxx.supabase.co/storage/v1/object/public/product-images/items/to-remove.jpg';
-      
+      const oldPhotoUrl =
+          'https://xxx.supabase.co/storage/v1/object/public/product-images/items/to-remove.jpg';
+
       final extractedPath = ItemRepository.extractFilePathFromUrl(oldPhotoUrl);
-      
+
       expect(extractedPath, equals('items/to-remove.jpg'));
     });
   });

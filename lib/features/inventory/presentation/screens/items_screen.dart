@@ -31,7 +31,9 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
     super.initState();
     // Load items on init
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(itemListNotifierProvider.notifier).loadItems();
+      ref
+          .read(itemListNotifierProvider.notifier)
+          .loadItems(includeInactive: true);
     });
   }
 
@@ -45,18 +47,24 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
   void _onSearchChanged(String value) {
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(milliseconds: 300), () {
-      ref.read(itemListNotifierProvider.notifier).searchItems(value);
+      ref
+          .read(itemListNotifierProvider.notifier)
+          .searchItems(value, includeInactive: true);
     });
   }
 
   void _onCategoryChanged(String? categoryId) {
-    ref.read(itemListNotifierProvider.notifier).filterByCategory(categoryId);
+    ref
+        .read(itemListNotifierProvider.notifier)
+        .filterByCategory(categoryId, includeInactive: true);
   }
 
   void _clearSearch() {
     _searchController.clear();
     ref.read(searchQueryProvider.notifier).state = '';
-    ref.read(itemListNotifierProvider.notifier).refresh();
+    ref
+        .read(itemListNotifierProvider.notifier)
+        .loadItems(includeInactive: true);
   }
 
   Future<void> _onRefresh() async {
@@ -65,9 +73,23 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
 
   /// Navigate to edit item screen (Story 3.5 - AC1)
   /// Uses context.push with item data via extra parameter
-  void _navigateToEditItem(Item item) {
-    debugPrint('[ITEMS] _navigateToEditItem called. item.id=${item.id}, item.imageUrl=${item.imageUrl}');
-    context.push('${AppRoutes.itemEdit}/${item.id}', extra: item);
+  Future<void> _navigateToEditItem(Item item) async {
+    debugPrint(
+      '[ITEMS] _navigateToEditItem called. item.id=${item.id}, item.imageUrl=${item.imageUrl}',
+    );
+    Item latestItem = item;
+    try {
+      final freshItem = await ref
+          .read(itemRepositoryProvider)
+          .getItemById(item.id);
+      if (freshItem != null) {
+        latestItem = freshItem;
+      }
+    } catch (e) {
+      debugPrint('[ITEMS] Failed to fetch latest item before edit: $e');
+    }
+    if (!mounted) return;
+    context.push('${AppRoutes.itemEdit}/${latestItem.id}', extra: latestItem);
   }
 
   @override
@@ -76,9 +98,7 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
     final searchQuery = ref.watch(searchQueryProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Kelola Barang'),
-      ),
+      appBar: AppBar(title: const Text('Kelola Barang')),
       body: Column(
         children: [
           // Search bar
@@ -106,7 +126,10 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                  borderSide: const BorderSide(
+                    color: AppColors.primary,
+                    width: 2,
+                  ),
                 ),
                 filled: true,
                 fillColor: AppColors.surface,
@@ -119,15 +142,11 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
           ),
 
           // Category filter chips
-          CategoryFilterChips(
-            onCategoryChanged: _onCategoryChanged,
-          ),
+          CategoryFilterChips(onCategoryChanged: _onCategoryChanged),
           const SizedBox(height: AppSpacing.sm),
 
           // Items list
-          Expanded(
-            child: _buildContent(itemState, searchQuery),
-          ),
+          Expanded(child: _buildContent(itemState, searchQuery)),
         ],
       ),
     );
@@ -136,9 +155,7 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
   Widget _buildContent(ItemListState state, String searchQuery) {
     // Loading state
     if (state.isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
+      return const Center(child: CircularProgressIndicator());
     }
 
     // Error state
@@ -199,18 +216,18 @@ class _ItemsScreenState extends ConsumerState<ItemsScreen> {
             const SizedBox(height: AppSpacing.md),
             Text(
               'Tidak ditemukan barang untuk',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(
               '"$query"',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.lg),

@@ -24,15 +24,13 @@ class SettingsScreen extends ConsumerWidget {
     final currentUser = currentUserAsync.asData?.value;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Menu'),
-      ),
+      appBar: AppBar(title: const Text('Menu')),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.screenPadding),
         children: [
           // Account section
           const AccountHeader(),
-          
+
           const SizedBox(height: AppSpacing.md),
 
           // Data Management section
@@ -58,12 +56,6 @@ class SettingsScreen extends ConsumerWidget {
 
           // Reports section
           const _SectionHeader(title: 'Laporan'),
-          SettingsTile(
-            icon: Icons.bar_chart_outlined,
-            title: 'Laporan Penjualan',
-            subtitle: 'Lihat laporan & export PDF',
-            onTap: () => context.push(AppRoutes.reports),
-          ),
           SettingsTile(
             icon: Icons.receipt_long_outlined,
             title: 'Riwayat Transaksi',
@@ -131,7 +123,9 @@ class SettingsScreen extends ConsumerWidget {
         final authState = ref.read(authNotifierProvider);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(authState.errorMessage ?? 'Gagal keluar dari aplikasi'),
+            content: Text(
+              authState.errorMessage ?? 'Gagal keluar dari aplikasi',
+            ),
             backgroundColor: AppColors.error,
           ),
         );
@@ -193,12 +187,19 @@ class _SimulationButtonState extends ConsumerState<_SimulationButton> {
         side: BorderSide(color: Colors.blue.shade100),
       ),
       child: ListTile(
-        leading: _isLoading 
-            ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
+        leading: _isLoading
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
             : const Icon(Icons.science, color: AppColors.primary),
         title: const Text(
           'Simulasi Pesanan Baru',
-          style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600),
+          style: TextStyle(
+            color: AppColors.primary,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         subtitle: const Text('Buat pesanan dummy untuk testing'),
         onTap: _isLoading ? null : _simulateOrder,
@@ -207,17 +208,13 @@ class _SimulationButtonState extends ConsumerState<_SimulationButton> {
   }
 }
 
-
 /// Logout button widget
 /// Shows loading state during logout process
 class _LogoutButton extends StatelessWidget {
   final bool isLoading;
   final VoidCallback onLogout;
 
-  const _LogoutButton({
-    required this.isLoading,
-    required this.onLogout,
-  });
+  const _LogoutButton({required this.isLoading, required this.onLogout});
 
   @override
   Widget build(BuildContext context) {
@@ -253,16 +250,13 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(
-        top: AppSpacing.lg,
-        bottom: AppSpacing.sm,
-      ),
+      padding: const EdgeInsets.only(top: AppSpacing.lg, bottom: AppSpacing.sm),
       child: Text(
         title,
         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w600,
-            ),
+          color: AppColors.textSecondary,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }

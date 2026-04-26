@@ -69,20 +69,22 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
   @override
   void initState() {
     super.initState();
-    
+
     // Debug: Log what item we received
     debugPrint('[ITEMFORM] initState called. widget.item=${widget.item}');
     if (widget.item != null) {
-      debugPrint('[ITEMFORM] Received item for edit: id=${widget.item!.id}, name=${widget.item!.name}, imageUrl=${widget.item!.imageUrl}');
+      debugPrint(
+        '[ITEMFORM] Received item for edit: id=${widget.item!.id}, name=${widget.item!.name}, imageUrl=${widget.item!.imageUrl}',
+      );
     } else {
       debugPrint('[ITEMFORM] No item - creating new item');
     }
-    
+
     // Reset form state to clear any previous errors (H3 fix from code review)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(itemFormNotifierProvider.notifier).reset();
     });
-    
+
     // Pre-fill form if in edit mode
     if (isEditMode) {
       _prefillFormWithItemData(widget.item!);
@@ -90,13 +92,13 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
       _cachedOldImageUrl = widget.item!.imageUrl;
       debugPrint('[ITEMFORM] Cached oldImageUrl: $_cachedOldImageUrl');
     }
-    
+
     _setupDirtyTracking();
-    
+
     // Load categories for dropdown
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(categoryListNotifierProvider.notifier).loadCategories();
-     });
+    });
   }
 
   /// Pre-fill form fields with existing item data (AC2)
@@ -112,7 +114,9 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
     _currentDisplayStock = item.stock; // Initialize display stock (H4 fix)
     _hasUnits = item.hasUnits;
     _baseUnit = item.baseUnit;
-    _unitDrafts = item.activeUnits.map((u) => ItemUnitDraft.fromUnit(u)).toList();
+    _unitDrafts = item.activeUnits
+        .map((u) => ItemUnitDraft.fromUnit(u))
+        .toList();
   }
 
   /// Format number with thousand separator for display (e.g., 3500 -> "3.500")
@@ -148,8 +152,8 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
   Future<bool> _onWillPop() async {
     if (!_isDirty) return true;
 
-    final dialogTitle = isEditMode 
-        ? 'Batalkan perubahan?' 
+    final dialogTitle = isEditMode
+        ? 'Batalkan perubahan?'
         : 'Batalkan penambahan barang?';
     final dialogContent = isEditMode
         ? 'Perubahan yang belum disimpan akan hilang.'
@@ -167,9 +171,7 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.error,
-            ),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
             child: const Text('Ya, batalkan'),
           ),
         ],
@@ -235,7 +237,8 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
   Future<bool?> _showDeleteConfirmationDialog() {
     return showDialog<bool>(
       context: context,
-      barrierDismissible: false, // AC6: Never dismissible - user must choose action
+      barrierDismissible:
+          false, // AC6: Never dismissible - user must choose action
       builder: (dialogContext) => AlertDialog(
         title: const Text('Hapus Barang?'),
         content: Text(
@@ -267,7 +270,8 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
       if (updatedItem != null && mounted) {
         setState(() {
           _stockController.text = updatedItem.stock.toString();
-          _currentDisplayStock = updatedItem.stock; // H4 fix: Update button display
+          _currentDisplayStock =
+              updatedItem.stock; // H4 fix: Update button display
         });
       }
     }
@@ -285,11 +289,11 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
 
     return showDialog<bool>(
       context: context,
-      barrierDismissible: true, // Controlled by PopScope.canPop during submission
+      barrierDismissible:
+          true, // Controlled by PopScope.canPop during submission
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) {
-          final difference =
-              newStock != null ? newStock! - currentStock : null;
+          final difference = newStock != null ? newStock! - currentStock : null;
 
           // Determine difference color and text (AC3)
           Color differenceColor = AppColors.textSecondary;
@@ -323,8 +327,8 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
                   Text(
                     widget.item!.name,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.md),
 
@@ -346,12 +350,12 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
                     controller: controller,
                     keyboardType: TextInputType.number,
                     enabled: !isSubmitting, // AC7: Disable during processing
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                    ],
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     decoration: InputDecoration(
                       labelText: 'Stok Fisik Sebenarnya',
-                      errorText: hasInteracted ? errorText : null, // Only show error after user interaction
+                      errorText: hasInteracted
+                          ? errorText
+                          : null, // Only show error after user interaction
                       border: const OutlineInputBorder(),
                     ),
                     onChanged: (value) {
@@ -360,7 +364,8 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
                         // AC3, AC4: Validate and calculate difference
                         if (value.isEmpty) {
                           newStock = null;
-                          errorText = 'Masukkan jumlah stok'; // AC4: Empty input error
+                          errorText =
+                              'Masukkan jumlah stok'; // AC4: Empty input error
                         } else {
                           final parsed = int.tryParse(value);
                           if (parsed == null) {
@@ -401,8 +406,9 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
               actions: [
                 // Batal button (AC2, AC7)
                 TextButton(
-                  onPressed:
-                      isSubmitting ? null : () => Navigator.pop(context, false),
+                  onPressed: isSubmitting
+                      ? null
+                      : () => Navigator.pop(context, false),
                   child: const Text('Batal'),
                 ),
                 // Simpan button (AC2, AC4, AC5, AC7)
@@ -415,7 +421,9 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
 
                           // Capture scaffold messenger before async gap to avoid
                           // use_build_context_synchronously warning
-                          final scaffoldMessenger = ScaffoldMessenger.of(this.context);
+                          final scaffoldMessenger = ScaffoldMessenger.of(
+                            this.context,
+                          );
                           final navigator = Navigator.of(context);
 
                           // AC5: Call provider to update stock
@@ -439,12 +447,15 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
                             // AC6: Keep dialog open on error
                             setDialogState(() => isSubmitting = false);
                             // Error message from state
-                            final errorMessage =
-                                ref.read(itemFormNotifierProvider).errorMessage;
+                            final errorMessage = ref
+                                .read(itemFormNotifierProvider)
+                                .errorMessage;
                             scaffoldMessenger.showSnackBar(
                               SnackBar(
-                                content: Text(errorMessage ??
-                                    'Terjadi kesalahan. Silakan coba lagi.'),
+                                content: Text(
+                                  errorMessage ??
+                                      'Terjadi kesalahan. Silakan coba lagi.',
+                                ),
                                 backgroundColor: AppColors.error,
                               ),
                             );
@@ -470,7 +481,7 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
   void _onDeletePressed() async {
     // AC6: Prevent interaction while processing
     if (_isDeleting) return;
-    
+
     final confirmed = await _showDeleteConfirmationDialog();
     if (confirmed == true) {
       _performDelete();
@@ -481,16 +492,17 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
   /// M1 fix: Added comprehensive mounted checks before all context access
   void _performDelete() async {
     if (!mounted) return;
-    
+
     setState(() => _isDeleting = true);
-    
+
     final success = await ref
         .read(itemFormNotifierProvider.notifier)
         .deleteItem(
           widget.item!.id,
-          imageUrl: widget.item!.imageUrl, // Story 3.8 - Pass image URL for deletion
+          imageUrl:
+              widget.item!.imageUrl, // Story 3.8 - Pass image URL for deletion
         );
-    
+
     // M1 fix: Check mounted before setState
     if (!mounted) return;
 
@@ -563,9 +575,13 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
       // Update existing item - pass oldImageUrl for orphan cleanup (Story 3.8 - AC1, AC2)
       // Story 3.8 FIX: Use cached oldImageUrl instead of widget.item.imageUrl to prevent data loss
       final oldImageUrlToPass = _cachedOldImageUrl;
-      debugPrint('[ITEMFORM] Passing oldImageUrl to updateItem: $oldImageUrlToPass');
-      
-      ref.read(itemFormNotifierProvider.notifier).updateItem(
+      debugPrint(
+        '[ITEMFORM] Passing oldImageUrl to updateItem: $oldImageUrlToPass',
+      );
+
+      ref
+          .read(itemFormNotifierProvider.notifier)
+          .updateItem(
             itemId: widget.item!.id,
             name: _nameController.text.trim(),
             categoryId: _selectedCategoryId,
@@ -576,13 +592,16 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
             isActive: _isActive,
             imageFile: _selectedImage,
             imageRemoved: _imageRemoved,
-            oldImageUrl: oldImageUrlToPass, // Story 3.8 - Pass cached old image URL
+            oldImageUrl:
+                oldImageUrlToPass, // Story 3.8 - Pass cached old image URL
             hasUnits: _hasUnits,
             baseUnit: _baseUnit,
           );
     } else {
       // Create new item
-      ref.read(itemFormNotifierProvider.notifier).saveItem(
+      ref
+          .read(itemFormNotifierProvider.notifier)
+          .saveItem(
             name: _nameController.text.trim(),
             categoryId: _selectedCategoryId,
             buyPrice: buyPrice,
@@ -595,6 +614,37 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
     }
   }
 
+  Future<void> _handleSuccessfulSave({
+    required String itemId,
+    required String successMessage,
+  }) async {
+    try {
+      if (isEditMode && _hasUnits) {
+        await _syncUnitsAfterSave(itemId);
+        await ref.read(itemListNotifierProvider.notifier).refresh();
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(successMessage),
+        backgroundColor: AppColors.success,
+      ),
+    );
+    context.pop();
+  }
+
   @override
   Widget build(BuildContext context) {
     final formState = ref.watch(itemFormNotifierProvider);
@@ -602,40 +652,24 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
 
     // Validate that selected category exists in loaded categories list
     // This prevents dropdown error when category is set before categories are loaded
-    final validCategoryId = (_selectedCategoryId != null &&
+    final validCategoryId =
+        (_selectedCategoryId != null &&
             categoriesState.categories.any((c) => c.id == _selectedCategoryId))
         ? _selectedCategoryId
         : null;
 
     // Success message based on mode (AC5, AC10)
-    final successMessage = isEditMode 
-        ? 'Barang berhasil diperbarui' 
+    final successMessage = isEditMode
+        ? 'Barang berhasil diperbarui'
         : 'Barang berhasil ditambahkan';
 
     // Listen for form state changes
     ref.listen<ItemFormState>(itemFormNotifierProvider, (previous, next) {
       if (next.isSuccess) {
-        if (isEditMode && _hasUnits) {
-          _syncUnitsAfterSave(next.createdItemId!).then((_) {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(successMessage),
-                  backgroundColor: AppColors.success,
-                ),
-              );
-              context.pop();
-            }
-          });
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(successMessage),
-              backgroundColor: AppColors.success,
-            ),
-          );
-          context.pop();
-        }
+        _handleSuccessfulSave(
+          itemId: next.createdItemId!,
+          successMessage: successMessage,
+        );
       } else if (next.hasError) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -745,21 +779,28 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
                 // Unit Configuration (edit mode)
                 if (isEditMode) ...[
                   const SizedBox(height: AppSpacing.md),
-                  const Text('Konfigurasi Satuan',
-                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                  const Text(
+                    'Konfigurasi Satuan',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                  ),
                   const SizedBox(height: 8),
                   UnitConfigSection(
                     initialHasUnits: _hasUnits,
                     initialBaseUnit: _baseUnit,
                     initialUnits: _unitDrafts,
-                    onChanged: ({required hasUnits, required baseUnit, required units}) {
-                      setState(() {
-                        _hasUnits = hasUnits;
-                        _baseUnit = baseUnit;
-                        _unitDrafts = units;
-                      });
-                      _markDirty();
-                    },
+                    onChanged:
+                        ({
+                          required hasUnits,
+                          required baseUnit,
+                          required units,
+                        }) {
+                          setState(() {
+                            _hasUnits = hasUnits;
+                            _baseUnit = baseUnit;
+                            _unitDrafts = units;
+                          });
+                          _markDirty();
+                        },
                   ),
                 ],
 
@@ -844,15 +885,27 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Text('Stok Saat Ini',
-                                  style: TextStyle(fontSize: 12, color: Colors.grey)),
+                              const Text(
+                                'Stok Saat Ini',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                ),
+                              ),
                               const SizedBox(height: 4),
                               Text(
                                 widget.item!.displayStock,
-                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                              const Text('(via Input Pembelian)',
-                                  style: TextStyle(fontSize: 10, color: Colors.grey)),
+                              const Text(
+                                '(via Input Pembelian)',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.grey,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -930,7 +983,9 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
                             'Stok saat ini: ${_currentDisplayStock ?? widget.item!.stock}', // H4 fix: Use tracked stock
                             style: TextStyle(
                               fontSize: 12,
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ],
@@ -972,12 +1027,16 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
                 SizedBox(
                   height: AppSpacing.buttonHeight,
                   child: ElevatedButton(
-                    onPressed: formState.isLoading || _isDeleting ? null : _onSubmit,
+                    onPressed: formState.isLoading || _isDeleting
+                        ? null
+                        : _onSubmit,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: AppColors.textOnPrimary,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                        borderRadius: BorderRadius.circular(
+                          AppSpacing.radiusMd,
+                        ),
                       ),
                     ),
                     child: formState.isLoading
@@ -1007,7 +1066,9 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: TextButton(
-                      onPressed: formState.isLoading || _isDeleting ? null : _onDeletePressed,
+                      onPressed: formState.isLoading || _isDeleting
+                          ? null
+                          : _onDeletePressed,
                       style: TextButton.styleFrom(
                         foregroundColor: AppColors.error,
                       ),

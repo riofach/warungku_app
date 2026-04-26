@@ -15,6 +15,29 @@ import '../models/item_model.dart';
 class ItemRepository {
   /// Timeout duration for database operations
   static const Duration _timeout = Duration(seconds: 30);
+  static const String _legacyDeletedItemNamePrefix = '__deleted__::';
+
+  bool _isLegacyDeletedItem(Item item) {
+    return item.name.startsWith(_legacyDeletedItemNamePrefix);
+  }
+
+  Future<bool> _purgeItemRow(String itemId) async {
+    await SupabaseService.client
+        .from('item_units')
+        .delete()
+        .eq('item_id', itemId)
+        .timeout(_timeout);
+
+    final response = await SupabaseService.client
+        .from('items')
+        .delete()
+        .eq('id', itemId)
+        .select('id')
+        .maybeSingle()
+        .timeout(_timeout);
+
+    return response != null;
+  }
 
   /// Extracts file path from Supabase Storage public URL (Story 3.8 - AC5)
   ///
@@ -52,12 +75,16 @@ class ItemRepository {
   Future<List<Item>> getItems({
     String? searchQuery,
     String? categoryId,
+    bool includeInactive = false,
   }) async {
     try {
       var query = SupabaseService.client
           .from('items')
-          .select('*, categories(name), item_units(*)')
-          .eq('is_active', true);
+          .select('*, categories(name), item_units(*)');
+
+      if (!includeInactive) {
+        query = query.eq('is_active', true);
+      }
 
       // Apply category filter if provided
       if (categoryId != null && categoryId.isNotEmpty) {
@@ -74,9 +101,20 @@ class ItemRepository {
           .order('name', ascending: true)
           .timeout(_timeout);
 
-      return (response as List)
+      final items = (response as List)
           .map((json) => Item.fromJson(json))
           .toList();
+      final legacyDeletedItems = items.where(_isLegacyDeletedItem).toList();
+
+      for (final item in legacyDeletedItems) {
+        try {
+          await _purgeItemRow(item.id);
+        } catch (_) {
+          // Legacy cleanup is best-effort; keep normal list loading resilient.
+        }
+      }
+
+      return items.where((item) => !_isLegacyDeletedItem(item)).toList();
     } on TimeoutException {
       throw Exception('Koneksi timeout. Silakan coba lagi.');
     } catch (e) {
@@ -108,7 +146,16 @@ class ItemRepository {
           .timeout(_timeout);
 
       if (response == null) return null;
-      return Item.fromJson(response);
+      final item = Item.fromJson(response);
+      if (_isLegacyDeletedItem(item)) {
+        try {
+          await _purgeItemRow(item.id);
+        } catch (_) {
+          // Ignore cleanup failure here; the row stays hidden from callers.
+        }
+        return null;
+      }
+      return item;
     } on TimeoutException {
       throw Exception('Koneksi timeout. Silakan coba lagi.');
     } catch (e) {
@@ -174,9 +221,7 @@ class ItemRepository {
           .order('name', ascending: true)
           .timeout(_timeout);
 
-      return (response as List)
-          .map((json) => Item.fromJson(json))
-          .toList();
+      return (response as List).map((json) => Item.fromJson(json)).toList();
     } on TimeoutException {
       throw Exception('Koneksi timeout. Silakan coba lagi.');
     } catch (e) {
@@ -198,7 +243,8 @@ class ItemRepository {
       // Generate unique filename
       const uuid = Uuid();
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final fileName = '${uuid.v4()}_$timestamp.jpg'; // Always save as jpg after compression
+      final fileName =
+          '${uuid.v4()}_$timestamp.jpg'; // Always save as jpg after compression
       final filePath = 'items/$fileName';
 
       // Read file as bytes for upload
@@ -210,10 +256,7 @@ class ItemRepository {
           .uploadBinary(
             filePath,
             fileBytes,
-            fileOptions: const FileOptions(
-              cacheControl: '3600',
-              upsert: false,
-            ),
+            fileOptions: const FileOptions(cacheControl: '3600', upsert: false),
           )
           .timeout(_timeout);
 
@@ -245,19 +288,20 @@ class ItemRepository {
     try {
       final Uint8List? compressedBytes =
           await FlutterImageCompress.compressWithFile(
-        file.absolute.path,
-        minWidth: 800,
-        minHeight: 800,
-        quality: 80,
-        format: CompressFormat.jpeg,
-      );
+            file.absolute.path,
+            minWidth: 800,
+            minHeight: 800,
+            quality: 80,
+            format: CompressFormat.jpeg,
+          );
 
       if (compressedBytes == null) return null;
 
       // Write to temp file
       final tempDir = await getTemporaryDirectory();
       final tempFile = File(
-          '${tempDir.path}/compressed_${DateTime.now().millisecondsSinceEpoch}.jpg');
+        '${tempDir.path}/compressed_${DateTime.now().millisecondsSinceEpoch}.jpg',
+      );
       await tempFile.writeAsBytes(compressedBytes);
 
       return tempFile;
@@ -282,23 +326,26 @@ class ItemRepository {
     debugPrint('[DELETE IMAGE] Starting deletion. imageUrl: $imageUrl');
 
     if (imageUrl == null || imageUrl.isEmpty) {
-      debugPrint('[DELETE IMAGE] imageUrl is null or empty, nothing to delete. Returning true.');
+      debugPrint(
+        '[DELETE IMAGE] imageUrl is null or empty, nothing to delete. Returning true.',
+      );
       return true;
     }
 
     final filePath = extractFilePathFromUrl(imageUrl);
     if (filePath == null) {
-      debugPrint('[DELETE IMAGE] Could not extract file path from URL: $imageUrl');
+      debugPrint(
+        '[DELETE IMAGE] Could not extract file path from URL: $imageUrl',
+      );
       return false;
     }
 
     debugPrint('[DELETE IMAGE] Extracted file path: $filePath');
 
     try {
-      await SupabaseService.client
-          .storage
-          .from('product-images')
-          .remove([filePath]);
+      await SupabaseService.client.storage.from('product-images').remove([
+        filePath,
+      ]);
 
       debugPrint('[DELETE IMAGE] Successfully deleted image: $filePath');
       return true;
@@ -383,7 +430,9 @@ class ItemRepository {
     bool hasUnits = false,
     String baseUnit = 'pcs',
   }) async {
-    debugPrint('[UPDATE ITEM] Starting updateItem. id=$id, oldImageUrl=$oldImageUrl, imageRemoved=$imageRemoved, imageFile=${imageFile != null}');
+    debugPrint(
+      '[UPDATE ITEM] Starting updateItem. id=$id, oldImageUrl=$oldImageUrl, imageRemoved=$imageRemoved, imageFile=${imageFile != null}',
+    );
 
     try {
       String? newImageUrl;
@@ -392,19 +441,27 @@ class ItemRepository {
       if (imageRemoved) {
         // User explicitly removed image - delete old image if exists (Story 3.8 - AC2, AC4, AC6)
         if (oldImageUrl != null) {
-          debugPrint('[UPDATE ITEM] User removed photo - deleting old image: $oldImageUrl');
+          debugPrint(
+            '[UPDATE ITEM] User removed photo - deleting old image: $oldImageUrl',
+          );
           await deleteImage(oldImageUrl); // Non-blocking
         } else {
-          debugPrint('[UPDATE ITEM] User removed photo but oldImageUrl is null - nothing to delete');
+          debugPrint(
+            '[UPDATE ITEM] User removed photo but oldImageUrl is null - nothing to delete',
+          );
         }
         newImageUrl = null;
       } else if (imageFile != null) {
         // User selected new image - delete old image first (Story 3.8 - AC1, AC6)
         if (oldImageUrl != null) {
-          debugPrint('[UPDATE ITEM] User selected new photo - deleting old image: $oldImageUrl');
+          debugPrint(
+            '[UPDATE ITEM] User selected new photo - deleting old image: $oldImageUrl',
+          );
           await deleteImage(oldImageUrl); // Non-blocking
         } else {
-          debugPrint('[UPDATE ITEM] User selected new photo but oldImageUrl is null - nothing to delete');
+          debugPrint(
+            '[UPDATE ITEM] User selected new photo but oldImageUrl is null - nothing to delete',
+          );
         }
         // Upload new image
         newImageUrl = await uploadImage(imageFile);
@@ -539,12 +596,11 @@ class ItemRepository {
     }
   }
 
-  /// Soft deletes an item by setting is_active = false (Story 3.6 - AC3; Story 3.8 - AC3, AC4, AC6)
+  /// Permanently deletes an item row (and its unit variants) from the database.
   ///
   /// Returns true if deletion was successful.
   /// Throws exception on error.
-  /// M3 fix: Now uses .select().maybeSingle() to verify row was actually updated
-  /// Story 3.8: Delete image from storage before soft delete (AC3)
+  /// Story 3.8: Delete image from storage before deleting the item row (AC3)
   ///
   /// [id] - Item ID to delete
   /// [imageUrl] - Image URL to delete from storage (Story 3.8 - AC3)
@@ -560,31 +616,27 @@ class ItemRepository {
         debugPrint('[DELETE ITEM] No image to delete (imageUrl is null)');
       }
 
-      // M3 fix: Use .select().maybeSingle() to verify update actually happened
-      final response = await SupabaseService.client
-          .from('items')
-          .update({
-            'is_active': false,
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', id)
-          .select('id')
-          .maybeSingle()
-          .timeout(_timeout);
+      final deleted = await _purgeItemRow(id);
 
-      // M3 fix: Check if row was actually updated
-      if (response == null) {
+      if (!deleted) {
         debugPrint('[DELETE ITEM] Item not found or already deleted');
         throw Exception('Barang tidak ditemukan');
       }
 
-      debugPrint('[DELETE ITEM] Successfully soft deleted item: $id');
+      debugPrint('[DELETE ITEM] Successfully deleted item row: $id');
       return true;
     } on TimeoutException {
       throw Exception('Terjadi kesalahan. Silakan coba lagi.');
     } on PostgrestException catch (e) {
       if (e.code == 'PGRST116') {
         throw Exception('Barang tidak ditemukan');
+      }
+      if (e.code == '23503' ||
+          e.message.toLowerCase().contains('foreign key') ||
+          e.message.toLowerCase().contains('violates')) {
+        throw Exception(
+          'Barang sudah dipakai di data transaksi/pembelian sehingga tidak bisa dihapus permanen.',
+        );
       }
       throw Exception('Terjadi kesalahan. Silakan coba lagi.');
     } catch (e) {

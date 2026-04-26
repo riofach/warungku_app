@@ -13,11 +13,7 @@ class PosProductCard extends ConsumerWidget {
   final Item item;
   final VoidCallback? onAddToCart;
 
-  const PosProductCard({
-    super.key,
-    required this.item,
-    this.onAddToCart,
-  });
+  const PosProductCard({super.key, required this.item, this.onAddToCart});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -31,8 +27,8 @@ class PosProductCard extends ConsumerWidget {
     // For has_units: sum quantity of all cart entries for this item
     final int quantityInCart = item.hasUnits
         ? cartState.items
-            .where((ci) => ci.item.id == item.id)
-            .fold(0, (sum, ci) => sum + ci.quantity)
+              .where((ci) => ci.item.id == item.id)
+              .fold(0, (sum, ci) => sum + ci.quantity)
         : cartState.getQuantityByKey(item.id);
 
     final bool canAddMore = item.hasUnits
@@ -66,11 +62,14 @@ class PosProductCard extends ConsumerWidget {
                     Container(
                       color: Colors.black.withValues(alpha: 0.3),
                       child: const Center(
-                        child: Text('Habis',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16)),
+                        child: Text(
+                          'Habis',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
                       ),
                     ),
                   if (quantityInCart > 0)
@@ -79,17 +78,23 @@ class PosProductCard extends ConsumerWidget {
                       left: AppSpacing.xs,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+                          horizontal: AppSpacing.sm,
+                          vertical: AppSpacing.xs,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.primary,
-                          borderRadius:
-                              BorderRadius.circular(AppSpacing.radiusSm),
+                          borderRadius: BorderRadius.circular(
+                            AppSpacing.radiusSm,
+                          ),
                         ),
-                        child: Text('$quantityInCart',
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12)),
+                        child: Text(
+                          '$quantityInCart',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
                       ),
                     ),
                 ],
@@ -103,13 +108,14 @@ class PosProductCard extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(item.name,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodyMedium
-                            ?.copyWith(fontWeight: FontWeight.w500)),
+                    Text(
+                      item.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                     const Spacer(),
                     Row(
                       children: [
@@ -119,12 +125,13 @@ class PosProductCard extends ConsumerWidget {
                             item.hasUnits && item.activeUnits.isNotEmpty
                                 ? 'Mulai ${Formatters.formatRupiah(item.activeUnits.map((u) => u.sellPrice).reduce((a, b) => a < b ? a : b))}'
                                 : Formatters.formatRupiah(item.sellPrice),
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodySmall
                                 ?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.primary),
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.primary,
+                                ),
                           ),
                         ),
                         SizedBox(
@@ -135,16 +142,14 @@ class PosProductCard extends ConsumerWidget {
                                 ? null
                                 : () => _onAddPressed(context, ref),
                             icon: Icon(
-                                item.hasUnits
-                                    ? Icons.tune
-                                    : Icons.add,
-                                size: 16),
+                              item.hasUnits ? Icons.tune : Icons.add,
+                              size: 16,
+                            ),
                             padding: EdgeInsets.zero,
                             style: IconButton.styleFrom(
-                              backgroundColor:
-                                  isOutOfStock || !canAddMore
-                                      ? AppColors.textTertiary
-                                      : AppColors.primary,
+                              backgroundColor: isOutOfStock || !canAddMore
+                                  ? AppColors.textTertiary
+                                  : AppColors.primary,
                               foregroundColor: Colors.white,
                             ),
                           ),
@@ -189,8 +194,11 @@ class PosProductCard extends ConsumerWidget {
     return Container(
       color: AppColors.backgroundDark,
       child: const Center(
-        child: Icon(Icons.inventory_2_outlined,
-            size: 40, color: AppColors.textTertiary),
+        child: Icon(
+          Icons.inventory_2_outlined,
+          size: 40,
+          color: AppColors.textTertiary,
+        ),
       ),
     );
   }
@@ -199,15 +207,22 @@ class PosProductCard extends ConsumerWidget {
     final status = item.stockStatus;
     return Container(
       padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
+      ),
       decoration: BoxDecoration(
         color: status.color.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
       ),
       child: Text(
-        item.hasUnits ? item.displayStock : (item.stock == 0 ? 'Habis' : '${item.stock}'),
+        item.hasUnits
+            ? item.displayStock
+            : (item.stock == 0 ? 'Habis' : '${item.stock}'),
         style: const TextStyle(
-            color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+          color: Colors.white,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }

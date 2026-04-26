@@ -12,6 +12,8 @@ import '../../data/repositories/purchase_repository.dart';
 import '../widgets/photo_picker_section.dart';
 import '../widgets/unit_config_section.dart';
 
+const purchaseFlowNewItemDefaultIsActive = false;
+
 /// Wizard 3-step untuk Input Pembelian.
 ///
 /// Step 1 — Pilih atau buat produk
@@ -209,8 +211,9 @@ class _PurchaseFlowScreenState extends ConsumerState<PurchaseFlowScreen> {
       String? finalPhotoUrl = _existingPhotoUrl;
 
       if (_photoFile != null) {
-        if (_existingPhotoUrl != null)
+        if (_existingPhotoUrl != null) {
           await repo.deleteImage(_existingPhotoUrl);
+        }
         finalPhotoUrl = await repo.uploadImage(_photoFile!);
       } else if (_photoRemoved && _existingPhotoUrl != null) {
         await repo.deleteImage(_existingPhotoUrl);
@@ -225,7 +228,7 @@ class _PurchaseFlowScreenState extends ConsumerState<PurchaseFlowScreen> {
           sellPrice: 0,
           stock: 0,
           stockThreshold: 10,
-          isActive: true,
+          isActive: purchaseFlowNewItemDefaultIsActive,
           imageUrl: finalPhotoUrl,
           hasUnits: _hasUnits,
           baseUnit: _baseUnit,
@@ -324,8 +327,17 @@ class _PurchaseFlowScreenState extends ConsumerState<PurchaseFlowScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        toolbarHeight: 72,
         leading: BackButton(onPressed: _prevStep),
-        title: Text('Input Pembelian — ${stepTitles[_currentStep]}'),
+        title: Text(
+          'Input Pembelian\n${stepTitles[_currentStep]}',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            height: 1.2,
+          ),
+        ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(6),
           child: LinearProgressIndicator(
@@ -503,6 +515,7 @@ class _PurchaseFlowScreenState extends ConsumerState<PurchaseFlowScreen> {
           initialHasUnits: _hasUnits,
           initialBaseUnit: _baseUnit,
           initialUnits: _unitDrafts,
+          showPriceFields: false,
           onChanged: ({required hasUnits, required baseUnit, required units}) {
             setState(() {
               _hasUnits = hasUnits;
@@ -610,7 +623,7 @@ class _PurchaseFlowScreenState extends ConsumerState<PurchaseFlowScreen> {
                     ),
                   const SizedBox(height: 4),
                   const Text(
-                    'Harga Jual sudah diatur di langkah 2. Harga Beli bisa diubah manual di Kelola Barang.',
+                    'Harga jual varian bisa diatur nanti di Kelola Barang. Harga beli dihitung otomatis dari pembelian ini.',
                     style: TextStyle(color: Colors.grey, fontSize: 12),
                   ),
                 ],

@@ -63,6 +63,9 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
   String _baseUnit = 'pcs';
   List<ItemUnitDraft> _unitDrafts = [];
 
+  // Description controller
+  final _descriptionController = TextEditingController();
+
   /// Whether the form is in edit mode
   bool get isEditMode => widget.item != null;
 
@@ -117,6 +120,7 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
     _unitDrafts = item.activeUnits
         .map((u) => ItemUnitDraft.fromUnit(u))
         .toList();
+    _descriptionController.text = item.description ?? '';
   }
 
   /// Format number with thousand separator for display (e.g., 3500 -> "3.500")
@@ -139,6 +143,7 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
     _sellPriceController.addListener(_markDirty);
     _stockController.addListener(_markDirty);
     _thresholdController.addListener(_markDirty);
+    _descriptionController.addListener(_markDirty);
   }
 
   void _markDirty() {
@@ -188,6 +193,7 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
     _sellPriceController.dispose();
     _stockController.dispose();
     _thresholdController.dispose();
+    _descriptionController.dispose();
     super.dispose();
   }
 
@@ -596,6 +602,9 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
                 oldImageUrlToPass, // Story 3.8 - Pass cached old image URL
             hasUnits: _hasUnits,
             baseUnit: _baseUnit,
+            description: _descriptionController.text.trim().isEmpty
+                ? null
+                : _descriptionController.text.trim(),
           );
     } else {
       // Create new item
@@ -610,6 +619,9 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
             stockThreshold: threshold,
             isActive: _isActive,
             imageFile: _selectedImage,
+            description: _descriptionController.text.trim().isEmpty
+                ? null
+                : _descriptionController.text.trim(),
           );
     }
   }
@@ -1019,6 +1031,22 @@ class _ItemFormScreenState extends ConsumerState<ItemFormScreen> {
                   onChanged: _onActiveChanged,
                   activeThumbColor: AppColors.success,
                   contentPadding: EdgeInsets.zero,
+                ),
+
+                const SizedBox(height: AppSpacing.md),
+
+                // Deskripsi (opsional)
+                TextFormField(
+                  controller: _descriptionController,
+                  decoration: const InputDecoration(
+                    labelText: 'Deskripsi (opsional)',
+                    hintText: 'Masukkan deskripsi produk',
+                    border: OutlineInputBorder(),
+                    alignLabelWithHint: true,
+                  ),
+                  maxLines: 4,
+                  maxLength: 500,
+                  textCapitalization: TextCapitalization.sentences,
                 ),
 
                 const SizedBox(height: AppSpacing.xl),

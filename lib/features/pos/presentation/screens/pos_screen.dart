@@ -219,7 +219,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     List filteredItems,
   ) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final gridAspectRatio = screenWidth < 380 ? 0.64 : 0.70;
+    final gridAspectRatio = screenWidth < 380 ? 0.60 : 0.65;
 
     return itemsAsync.when(
       loading: () => const LoadingWidget(message: 'Memuat barang...'),

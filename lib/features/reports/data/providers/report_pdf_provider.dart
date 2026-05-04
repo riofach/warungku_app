@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:warungku_app/core/services/pdf_service.dart';
+import 'package:warungku_app/features/orders/data/models/order_model.dart';
 import 'package:warungku_app/features/pos/data/models/transaction_model.dart' as pos;
 import 'package:warungku_app/features/reports/data/models/report_summary_model.dart';
 import 'package:warungku_app/features/reports/data/models/top_item_model.dart';
@@ -27,11 +28,12 @@ class ReportPdfNotifier extends AsyncNotifier<void> {
       final _pdfService = ref.read(pdfServiceProvider);
       final summaryAsync = ref.read(reportSummaryProvider);
       final transactionsAsync = ref.read(reportTransactionsProvider);
+      final ordersAsync = ref.read(reportOrdersProvider);
       final topItemsAsync = ref.read(topSellingItemsProvider);
       final filter = ref.read(reportFilterProvider);
 
       // Validation
-      if (summaryAsync.isLoading || transactionsAsync.isLoading || topItemsAsync.isLoading) {
+      if (summaryAsync.isLoading || transactionsAsync.isLoading || ordersAsync.isLoading || topItemsAsync.isLoading) {
         throw Exception('Data laporan sedang dimuat. Harap tunggu.');
       }
 
@@ -70,9 +72,12 @@ class ReportPdfNotifier extends AsyncNotifier<void> {
         );
       }).toList();
 
+      final ordersList = (ordersAsync.value ?? <Order>[]);
+
       await _pdfService.generateReport(
         summary: summaryAsync.value!,
         transactions: transactionsList,
+        orders: ordersList,
         topItems: topItemsAsync.value!,
         period: period,
       );

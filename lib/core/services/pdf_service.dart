@@ -7,6 +7,7 @@ import 'package:printing/printing.dart';
 import 'package:intl/intl.dart';
 
 import 'package:warungku_app/core/utils/formatters.dart';
+import 'package:warungku_app/features/orders/data/models/order_model.dart';
 import 'package:warungku_app/features/pos/data/models/transaction_model.dart';
 import 'package:warungku_app/features/reports/data/models/report_summary_model.dart';
 import 'package:warungku_app/features/reports/data/models/top_item_model.dart';
@@ -16,6 +17,7 @@ class PdfService {
   Future<void> generateReport({
     required ReportSummary summary,
     required List<Transaction> transactions,
+    required List<Order> orders,
     required List<TopItem> topItems,
     required String period,
   }) async {
@@ -43,6 +45,8 @@ class PdfService {
           _buildTopItemsTable(topItems),
           pw.SizedBox(height: 20),
           _buildTransactionTable(transactions),
+          pw.SizedBox(height: 20),
+          _buildOrderTable(orders),
         ],
       ),
     );
@@ -69,7 +73,7 @@ class PdfService {
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 pw.Text(
-                  'WARUNGKU DIGITAL',
+                  'WARUNG LUTHFAN',
                   style: pw.TextStyle(
                     fontSize: 20,
                     fontWeight: pw.FontWeight.bold,
@@ -209,6 +213,44 @@ class PdfService {
           border: null,
           headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
           headerDecoration: const pw.BoxDecoration(color: PdfColors.blue600),
+          rowDecoration: const pw.BoxDecoration(
+            border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300, width: .5)),
+          ),
+          cellAlignment: pw.Alignment.centerLeft,
+          cellPadding: const pw.EdgeInsets.all(8),
+          headerPadding: const pw.EdgeInsets.all(8),
+          oddRowDecoration: const pw.BoxDecoration(color: PdfColors.grey100),
+        ),
+      ],
+    );
+  }
+
+  pw.Widget _buildOrderTable(List<Order> orders) {
+    if (orders.isEmpty) return pw.Container();
+
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text(
+          'Daftar Pesanan Online',
+          style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+        ),
+        pw.SizedBox(height: 8),
+        pw.TableHelper.fromTextArray(
+          headers: ['Waktu', 'Kode', 'Pelanggan', 'Metode', 'Total', 'Status'],
+          data: orders.map((o) {
+            return [
+              formatDateForPdf(o.createdAt),
+              o.code,
+              o.customerName,
+              o.paymentMethod.toUpperCase(),
+              formatRupiah(o.total),
+              o.status.label,
+            ];
+          }).toList(),
+          border: null,
+          headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+          headerDecoration: const pw.BoxDecoration(color: PdfColors.green700),
           rowDecoration: const pw.BoxDecoration(
             border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300, width: .5)),
           ),

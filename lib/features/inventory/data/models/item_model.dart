@@ -57,6 +57,7 @@ class Item {
   final DateTime createdAt;
   final DateTime updatedAt;
   final String? categoryName;
+  final String? description;
 
   const Item({
     required this.id,
@@ -74,6 +75,7 @@ class Item {
     required this.createdAt,
     required this.updatedAt,
     this.categoryName,
+    this.description,
   });
 
   StockStatus get stockStatus {
@@ -136,6 +138,7 @@ class Item {
           ? DateTime.parse(json['updated_at'] as String)
           : DateTime.now(),
       categoryName: catName,
+      description: json['description'] as String?,
     );
   }
 
@@ -150,6 +153,7 @@ class Item {
         'is_active': isActive,
         'has_units': hasUnits,
         'base_unit': baseUnit,
+        'description': description,
       };
 
   Item copyWith({
@@ -168,6 +172,7 @@ class Item {
     DateTime? createdAt,
     DateTime? updatedAt,
     Object? categoryName = _undefined,
+    Object? description = _undefined,
   }) {
     return Item(
       id: id ?? this.id,
@@ -188,6 +193,9 @@ class Item {
       categoryName: categoryName == _undefined
           ? this.categoryName
           : categoryName as String?,
+      description: description == _undefined
+          ? this.description
+          : description as String?,
     );
   }
 

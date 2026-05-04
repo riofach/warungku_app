@@ -65,6 +65,7 @@ class ItemFormNotifier extends Notifier<ItemFormState> {
     required int stockThreshold,
     required bool isActive,
     File? imageFile,
+    String? description,
   }) async {
     // Set loading state
     state = state.copyWith(status: ItemFormStatus.loading);
@@ -88,6 +89,7 @@ class ItemFormNotifier extends Notifier<ItemFormState> {
         stockThreshold: stockThreshold,
         isActive: isActive,
         imageUrl: imageUrl,
+        description: description,
       );
 
       // Set success state
@@ -138,6 +140,7 @@ class ItemFormNotifier extends Notifier<ItemFormState> {
     String? oldImageUrl, // Story 3.8 - AC1, AC2
     bool hasUnits = false,
     String baseUnit = 'pcs',
+    String? description,
   }) async {
     // Set loading state
     state = state.copyWith(status: ItemFormStatus.loading);
@@ -160,6 +163,7 @@ class ItemFormNotifier extends Notifier<ItemFormState> {
         oldImageUrl: oldImageUrl, // Story 3.8 - Pass old image URL
         hasUnits: hasUnits,
         baseUnit: baseUnit,
+        description: description,
       );
 
       // Set success state

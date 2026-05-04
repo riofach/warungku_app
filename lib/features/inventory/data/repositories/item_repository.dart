@@ -369,6 +369,7 @@ class ItemRepository {
     String? imageUrl,
     bool hasUnits = false,
     String baseUnit = 'pcs',
+    String? description,
   }) async {
     try {
       final data = {
@@ -382,6 +383,7 @@ class ItemRepository {
         'image_url': imageUrl,
         'has_units': hasUnits,
         'base_unit': baseUnit,
+        'description': description,
       };
 
       final response = await SupabaseService.client
@@ -429,6 +431,7 @@ class ItemRepository {
     String? oldImageUrl, // Story 3.8 - AC1, AC2
     bool hasUnits = false,
     String baseUnit = 'pcs',
+    String? description,
   }) async {
     debugPrint(
       '[UPDATE ITEM] Starting updateItem. id=$id, oldImageUrl=$oldImageUrl, imageRemoved=$imageRemoved, imageFile=${imageFile != null}',
@@ -481,6 +484,7 @@ class ItemRepository {
         'updated_at': DateTime.now().toIso8601String(),
         'has_units': hasUnits,
         'base_unit': baseUnit,
+        'description': description,
       };
 
       // Only include image_url if we're changing it (AC6, AC7)

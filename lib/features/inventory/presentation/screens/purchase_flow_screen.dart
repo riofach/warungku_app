@@ -34,6 +34,7 @@ class _PurchaseFlowScreenState extends ConsumerState<PurchaseFlowScreen> {
   Item? _selectedItem;
   bool _isNewItem = false;
   final _nameCtrl = TextEditingController();
+  final _descCtrl = TextEditingController();
   String? _selectedCategoryId;
   final _step1FormKey = GlobalKey<FormState>();
 
@@ -69,6 +70,7 @@ class _PurchaseFlowScreenState extends ConsumerState<PurchaseFlowScreen> {
   void dispose() {
     _pageController.dispose();
     _nameCtrl.dispose();
+    _descCtrl.dispose();
     _qtyCtrl.dispose();
     _costCtrl.dispose();
     _notesCtrl.dispose();
@@ -232,6 +234,9 @@ class _PurchaseFlowScreenState extends ConsumerState<PurchaseFlowScreen> {
           imageUrl: finalPhotoUrl,
           hasUnits: _hasUnits,
           baseUnit: _baseUnit,
+          description: _descCtrl.text.trim().isEmpty
+              ? null
+              : _descCtrl.text.trim(),
         );
       } else {
         itemId = _selectedItem!.id;
@@ -418,6 +423,18 @@ class _PurchaseFlowScreenState extends ConsumerState<PurchaseFlowScreen> {
                   validator: (v) => v == null || v.trim().isEmpty
                       ? 'Nama produk wajib diisi'
                       : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _descCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Deskripsi (opsional)',
+                    border: OutlineInputBorder(),
+                    alignLabelWithHint: true,
+                  ),
+                  maxLines: 3,
+                  maxLength: 500,
+                  textCapitalization: TextCapitalization.sentences,
                 ),
                 const SizedBox(height: 12),
                 _CategoryDropdown(

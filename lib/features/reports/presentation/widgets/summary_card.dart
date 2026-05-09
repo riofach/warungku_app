@@ -5,6 +5,7 @@ import '../../../../core/theme/app_spacing.dart';
 class SummaryCard extends StatelessWidget {
   final String title;
   final String value;
+  final String? subtitle;
   final IconData icon;
   final Color color;
   final bool isLoading;
@@ -13,6 +14,7 @@ class SummaryCard extends StatelessWidget {
     super.key,
     required this.title,
     required this.value,
+    this.subtitle,
     required this.icon,
     required this.color,
     this.isLoading = false,
@@ -73,7 +75,7 @@ class SummaryCard extends StatelessWidget {
                 strokeWidth: 2,
               ),
             )
-          else
+          else ...[
             Text(
               value,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -83,6 +85,19 @@ class SummaryCard extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
+            if (subtitle != null) ...[
+              const SizedBox(height: 2),
+              Text(
+                subtitle!,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppColors.textSecondary,
+                      fontSize: 9,
+                    ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ],
         ],
       ),
     );

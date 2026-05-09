@@ -85,32 +85,34 @@ final ordersProvider = StreamProvider<List<Order>>((ref) {
       final orders = await repository.getOrders();
 
       // =====================================================================
-      // NOTIFICATION DETECTION: Find newly inserted orders vs previous cache.
-      // This is the PRIMARY notification trigger since Supabase Realtime may
-      // not be configured. The 30s poll is 100% reliable.
+      // NOTIFICATION DETECTION: Detect paid orders via two paths:
+      //   1. Brand-new order IDs that are already paid (instant payment)
+      //   2. Existing orders whose status just changed TO paid (pending→paid)
       // =====================================================================
-      final previousIds = ref
-          .read(ordersCacheProvider)
-          .map((o) => o.id)
-          .toSet();
-      final newOrders = orders.where((o) {
-        // Must be a new ID (not in previous fetch)
-        if (previousIds.isNotEmpty && previousIds.contains(o.id)) return false;
-        // Must be pending or paid (active new order)
+      final previousStatuses = {
+        for (final o in ref.read(ordersCacheProvider)) o.id: o.status,
+      };
+      final paidOrders = orders.where((o) {
         if (o.status != OrderStatus.paid) return false;
-        // Must have been created AFTER app startup (ignore historical orders)
-        if (o.createdAt.isBefore(
-          _appStartTime.subtract(const Duration(minutes: 5)),
-        ))
-          return false;
-        return true;
+        final prev = previousStatuses[o.id];
+        if (prev == null) {
+          // New order ID — must be created after app startup
+          if (o.createdAt.isBefore(
+            _appStartTime.subtract(const Duration(minutes: 5)),
+          )) {
+            return false;
+          }
+          return true;
+        }
+        // Existing order whose status just changed to paid
+        return prev != OrderStatus.paid;
       }).toList();
 
-      for (final newOrder in newOrders) {
+      for (final order in paidOrders) {
         debugPrint(
-          '[ORDERS_PROVIDER] 🔔 New order detected via poll: ${newOrder.code}',
+          '[ORDERS_PROVIDER] 🔔 Paid order detected via poll: ${order.code}',
         );
-        emitNewOrderNotification(newOrder);
+        emitNewOrderNotification(order);
       }
       // =====================================================================
 
@@ -170,7 +172,7 @@ final ordersProvider = StreamProvider<List<Order>>((ref) {
   // (e.g., RLS issue, background connection drop, silent failure)
   final pollingTimer = Timer.periodic(const Duration(seconds: 15), (_) {
     if (!controller.isClosed) {
-      debugPrint('[ORDERS_PROVIDER] Periodic 30s poll — refreshing orders...');
+      debugPrint('[ORDERS_PROVIDER] Periodic 15s poll — refreshing orders...');
       fetchOrders();
     }
   });

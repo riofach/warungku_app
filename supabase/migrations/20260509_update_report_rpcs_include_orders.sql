@@ -40,11 +40,10 @@ BEGIN
   WHERE created_at >= v_start AND created_at <= v_end
     AND status IN ('paid', 'processing', 'ready', 'delivered', 'completed');
 
-  SELECT COALESCE(SUM((oi.price - COALESCE(i.buy_price, 0)) * oi.quantity), 0)
+  SELECT COALESCE(SUM((oi.price - oi.buy_price) * oi.quantity), 0)
   INTO order_profit
   FROM orders o
   JOIN order_items oi ON o.id = oi.order_id
-  JOIN items i ON oi.item_id = i.id
   WHERE o.created_at >= v_start AND o.created_at <= v_end
     AND o.status IN ('paid', 'processing', 'ready', 'delivered', 'completed');
 

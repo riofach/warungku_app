@@ -97,8 +97,7 @@ final ordersProvider = StreamProvider<List<Order>>((ref) {
         // Must be a new ID (not in previous fetch)
         if (previousIds.isNotEmpty && previousIds.contains(o.id)) return false;
         // Must be pending or paid (active new order)
-        if (o.status != OrderStatus.pending && o.status != OrderStatus.paid)
-          return false;
+        if (o.status != OrderStatus.paid) return false;
         // Must have been created AFTER app startup (ignore historical orders)
         if (o.createdAt.isBefore(
           _appStartTime.subtract(const Duration(minutes: 5)),

@@ -26,7 +26,7 @@ class OrderRepository {
       final response = await _supabase
           .from(SupabaseConstants.tableOrders)
           .select('*')
-          .inFilter('status', ['pending', 'paid'])
+          .inFilter('status', ['paid'])
           .order('created_at', ascending: false)
           .limit(limit)
           .timeout(_timeout);

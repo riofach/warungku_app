@@ -121,7 +121,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
           return TabBarView(
             controller: _tabController,
             children: [
-              _buildOrderList(orders, [OrderStatus.pending, OrderStatus.paid]),
+              _buildOrderList(orders, [OrderStatus.paid]),
               _buildOrderList(orders, [
                 OrderStatus.processing,
                 OrderStatus.ready,
@@ -144,10 +144,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
             return TabBarView(
               controller: _tabController,
               children: [
-                _buildOrderList(cachedOrders, [
-                  OrderStatus.pending,
-                  OrderStatus.paid,
-                ]),
+                _buildOrderList(cachedOrders, [OrderStatus.paid]),
                 _buildOrderList(cachedOrders, [
                   OrderStatus.processing,
                   OrderStatus.ready,
@@ -172,10 +169,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
             return TabBarView(
               controller: _tabController,
               children: [
-                _buildOrderList(cachedOrders, [
-                  OrderStatus.pending,
-                  OrderStatus.paid,
-                ]),
+                _buildOrderList(cachedOrders, [OrderStatus.paid]),
                 _buildOrderList(cachedOrders, [
                   OrderStatus.processing,
                   OrderStatus.ready,

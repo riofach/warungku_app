@@ -113,12 +113,25 @@ class PdfService {
   }
 
   pw.Widget _buildSummarySection(ReportSummary summary) {
-    return pw.Row(
-      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+    return pw.Column(
       children: [
-        _buildSummaryCard('Total Omset', formatRupiah(summary.totalRevenue)),
-        _buildSummaryCard('Total Profit', formatRupiah(summary.totalProfit)),
-        _buildSummaryCard('Total Transaksi', '${summary.transactionCount}'),
+        pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          children: [
+            _buildSummaryCard('Total Omset', formatRupiah(summary.totalRevenue)),
+            _buildSummaryCard('Total Profit', formatRupiah(summary.totalProfit)),
+            _buildSummaryCard('Total Transaksi', '${summary.transactionCount}'),
+          ],
+        ),
+        pw.SizedBox(height: 8),
+        pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          children: [
+            _buildSummaryCard('Omset POS', formatRupiah(summary.posRevenue)),
+            _buildSummaryCard('Omset Online', formatRupiah(summary.orderRevenue)),
+            _buildSummaryCard('Pesanan Online', '${summary.orderCount}'),
+          ],
+        ),
       ],
     );
   }

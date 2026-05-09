@@ -127,21 +127,20 @@ class NewOrdersNotifier extends AsyncNotifier<List<Order>> {
   }
 
   void _handleInsert(Map<String, dynamic> newRecord) {
-    // Parse order and emit to global notification stream (ALL new orders).
-    // Uses emitNewOrderNotification() for deduplication with polling channel.
-    try {
-      final order = Order.fromJson(newRecord);
-      debugPrint(
-        '[NEW_ORDERS] 🔔 Emitting new order notification: ${order.code}',
-      );
-      emitNewOrderNotification(order);
-    } catch (e) {
-      debugPrint('[NEW_ORDERS] Error parsing new order for notification: $e');
-    }
-
-    // Also refresh the pending orders list
     final status = newRecord['status'] as String?;
-    if (status == 'pending' || status == 'paid') {
+
+    // Only notify and show if order is already paid (e.g., instant payment).
+    // Orders with 'pending' status are hidden until payment is confirmed.
+    if (status == 'paid') {
+      try {
+        final order = Order.fromJson(newRecord);
+        debugPrint(
+          '[NEW_ORDERS] 🔔 Emitting new order notification: ${order.code}',
+        );
+        emitNewOrderNotification(order);
+      } catch (e) {
+        debugPrint('[NEW_ORDERS] Error parsing new order for notification: $e');
+      }
       refresh();
     }
   }
@@ -150,8 +149,20 @@ class NewOrdersNotifier extends AsyncNotifier<List<Order>> {
     final status = newRecord['status'] as String?;
     final orderId = newRecord['id'] as String?;
 
-    if (status != 'pending' && status != 'paid' && orderId != null) {
-      // Remove order from list if status changed to non-pending/paid
+    if (status == 'paid' && orderId != null) {
+      // Order just got paid — notify admin and add to new orders list
+      try {
+        final order = Order.fromJson(newRecord);
+        debugPrint(
+          '[NEW_ORDERS] 🔔 Order paid, emitting notification: ${order.code}',
+        );
+        emitNewOrderNotification(order);
+      } catch (e) {
+        debugPrint('[NEW_ORDERS] Error parsing paid order for notification: $e');
+      }
+      refresh();
+    } else if (status != 'paid' && orderId != null) {
+      // Remove order from list if status changed away from paid
       state.whenData((orders) {
         final updatedOrders = orders.where((o) => o.id != orderId).toList();
         state = AsyncData(updatedOrders);
@@ -159,8 +170,6 @@ class NewOrdersNotifier extends AsyncNotifier<List<Order>> {
 
       // Refresh global dashboard data since an order is processed
       ref.invalidate(dashboardProvider);
-    } else if ((status == 'pending' || status == 'paid') && orderId != null) {
-      refresh();
     }
   }
 

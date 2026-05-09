@@ -30,10 +30,11 @@ class ReportRepository {
       debugPrint('⚠️ RPC Failed or Missing: $e');
       debugPrint('🔄 Falling back to client-side calculation...');
       
-      // Fallback: Fetch transactions and calculate manually
+      // Fallback: Fetch transactions + orders and calculate manually
       try {
         final transactions = await getTransactions(start, end);
-        return _calculateSummaryManual(transactions);
+        final orders = await getOrdersForReport(start, end);
+        return _calculateSummaryManual(transactions, orders);
       } catch (fallbackError) {
         debugPrint('❌ Fallback failed: $fallbackError');
         throw Exception('Gagal memuat ringkasan laporan.');
@@ -41,29 +42,39 @@ class ReportRepository {
     }
   }
 
-  /// Calculate summary manually from transaction list
-  ReportSummary _calculateSummaryManual(List<Transaction> transactions) {
-    int totalRevenue = 0;
-    int totalProfit = 0;
-    
+  static const _paidStatuses = {
+    'paid', 'processing', 'ready', 'delivered', 'completed',
+  };
+
+  ReportSummary _calculateSummaryManual(List<Transaction> transactions, List<Order> orders) {
+    int posRevenue = 0;
+    int posProfit = 0;
     for (var trx in transactions) {
-      totalRevenue += trx.total;
-      
-      // Note: In MVP, buy_price is fetched from 'items' table via RPC.
-      // The standard 'getTransactions' query uses 'transaction_items' which lacks current buy_price.
-      // To prevent misleading data (Revenue becoming Profit), we set profit to 0 in fallback mode.
-      // Ideally, the RPC should always be used.
-      totalProfit += trx.totalProfit; 
+      posRevenue += trx.total;
+      posProfit += trx.totalProfit;
     }
 
-    final count = transactions.length;
-    final average = count > 0 ? (totalRevenue / count).round() : 0;
+    final paidOrders = orders.where((o) => _paidStatuses.contains(o.status.name));
+    int orderRevenue = 0;
+    for (var order in paidOrders) {
+      orderRevenue += order.total;
+    }
+
+    final posCount = transactions.length;
+    final orderCount = paidOrders.length;
+    final totalRevenue = posRevenue + orderRevenue;
+    final totalCount = posCount + orderCount;
+    final average = totalCount > 0 ? (totalRevenue / totalCount).round() : 0;
 
     return ReportSummary(
       totalRevenue: totalRevenue,
-      totalProfit: totalProfit,
-      transactionCount: count,
+      totalProfit: posProfit,
+      transactionCount: totalCount,
       averageValue: average,
+      posCount: posCount,
+      posRevenue: posRevenue,
+      orderCount: orderCount,
+      orderRevenue: orderRevenue,
     );
   }
 

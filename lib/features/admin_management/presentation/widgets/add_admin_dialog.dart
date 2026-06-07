@@ -139,6 +139,7 @@ class _AddAdminDialogState extends ConsumerState<AddAdminDialog> {
 
               DropdownButtonFormField<UserRole>(
                 initialValue: _selectedRole,
+                isExpanded: true,
                 decoration: const InputDecoration(
                   labelText: 'Role',
                   prefixIcon: Icon(Icons.badge_outlined),
@@ -146,11 +147,17 @@ class _AddAdminDialogState extends ConsumerState<AddAdminDialog> {
                 items: const [
                   DropdownMenuItem(
                     value: UserRole.kasir,
-                    child: Text('Kasir (akses Dashboard & POS)'),
+                    child: Text(
+                      'Kasir (akses Dashboard & POS)',
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                   DropdownMenuItem(
                     value: UserRole.owner,
-                    child: Text('Owner (akses penuh)'),
+                    child: Text(
+                      'Owner (akses penuh)',
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
                 onChanged: createState.isLoading

@@ -54,13 +54,25 @@ class AppRoutes {
 /// Routes a kasir is allowed to navigate to. Anything else triggers a
 /// redirect to [AppRoutes.pos]. Allowlist (not denylist) so new owner-only
 /// routes are blocked by default when they're added.
+///
+/// Kasir handles online orders, so [orders] and any [orderDetail]/:id path
+/// are allowed (the latter is matched via prefix in [_isKasirAllowed]).
 const _kasirAllowedRoutes = <String>{
   AppRoutes.login,
   AppRoutes.dashboard,
   AppRoutes.pos,
+  AppRoutes.orders,
   AppRoutes.settings,
   AppRoutes.transactionSuccess,
 };
+
+/// Allowed-paths check for kasir. Exact-match against [_kasirAllowedRoutes]
+/// plus prefix-match for dynamic order detail (`/orders/detail/:id`).
+bool _isKasirAllowed(String location) {
+  if (_kasirAllowedRoutes.contains(location)) return true;
+  if (location.startsWith('${AppRoutes.orderDetail}/')) return true;
+  return false;
+}
 
 /// Global key for root navigator
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -78,8 +90,8 @@ final routerProvider = Provider<GoRouter>((ref) {
   // Bridge Riverpod into GoRouter: whenever auth state or resolved role
   // changes, bump the ValueNotifier so GoRouter re-runs the redirect callback.
   final refresh = ValueNotifier<int>(0);
-  ref.listen(supabaseAuthStateProvider, (_, __) => refresh.value++);
-  ref.listen(userRoleProvider, (_, __) => refresh.value++);
+  ref.listen(supabaseAuthStateProvider, (_, _) => refresh.value++);
+  ref.listen(userRoleProvider, (_, _) => refresh.value++);
   ref.onDispose(refresh.dispose);
 
   return GoRouter(
@@ -104,8 +116,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         return null;
       }
 
-      if (role == UserRole.kasir &&
-          !_kasirAllowedRoutes.contains(state.matchedLocation)) {
+      if (role == UserRole.kasir && !_isKasirAllowed(state.matchedLocation)) {
         return AppRoutes.pos;
       }
 

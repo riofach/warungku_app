@@ -72,8 +72,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         onRefresh: () async {
           await Future.wait([
             ref.read(dashboardProvider.notifier).refresh(),
+            // NewOrdersSection now visible to kasir too — refresh for both.
+            ref.read(newOrdersProvider.notifier).refresh(),
             if (isOwner) ref.read(lowStockProvider.notifier).refresh(),
-            if (isOwner) ref.read(newOrdersProvider.notifier).refresh(),
             if (isOwner) ref.refresh(topSellingItemsProvider.future),
           ]);
         },
@@ -97,21 +98,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           Expanded(child: ProfitCard(profit: summary.profit)),
                         ],
                       ),
-                      const SizedBox(height: AppSpacing.md),
-                      TransactionCountCard(count: summary.transactionCount),
-                      const SizedBox(height: AppSpacing.md),
-                      OrderSummaryCard(
-                        orderCount: summary.orderCount,
-                        orderOmset: summary.orderOmset,
-                      ),
                     ] else ...[
-                      // Kasir view: omset + transaction count only. No profit
-                      // (sensitive), no online-order summary (kasir doesn't
-                      // touch online orders).
-                      OmsetCard(omset: summary.omset),
-                      const SizedBox(height: AppSpacing.md),
-                      TransactionCountCard(count: summary.transactionCount),
+                      // Kasir view: omset stretches full width (no profit
+                      // alongside — profit is owner-only). SizedBox forces
+                      // Card to fill the available width, matching the
+                      // transaction count card below.
+                      SizedBox(
+                        width: double.infinity,
+                        child: OmsetCard(omset: summary.omset),
+                      ),
                     ],
+                    const SizedBox(height: AppSpacing.md),
+                    TransactionCountCard(count: summary.transactionCount),
+                    const SizedBox(height: AppSpacing.md),
+                    OrderSummaryCard(
+                      orderCount: summary.orderCount,
+                      orderOmset: summary.orderOmset,
+                    ),
                   ],
                 ),
                 loading: () => _buildShimmerCards(isOwner: isOwner),
@@ -119,9 +122,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ),
               const SizedBox(height: AppSpacing.lg),
 
+              // Pesanan Baru — visible for both roles; kasir handles online
+              // orders alongside owner.
+              const NewOrdersSection(),
+              const SizedBox(height: AppSpacing.lg),
+
+              // Inventory and analytics remain owner-only.
               if (isOwner) ...[
-                const NewOrdersSection(),
-                const SizedBox(height: AppSpacing.lg),
                 const LowStockAlert(),
                 const SizedBox(height: AppSpacing.lg),
                 const TopSellingCard(),
@@ -134,24 +141,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   Widget _buildShimmerCards({required bool isOwner}) {
-    if (!isOwner) {
-      return Column(
-        children: [
-          _ShimmerCard(),
-          const SizedBox(height: AppSpacing.md),
-          _ShimmerCard(),
-        ],
-      );
-    }
     return Column(
       children: [
-        Row(
-          children: [
-            Expanded(child: _ShimmerCard()),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(child: _ShimmerCard()),
-          ],
-        ),
+        if (isOwner)
+          Row(
+            children: [
+              Expanded(child: _ShimmerCard()),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(child: _ShimmerCard()),
+            ],
+          )
+        else
+          _ShimmerCard(),
         const SizedBox(height: AppSpacing.md),
         _ShimmerCard(),
         const SizedBox(height: AppSpacing.md),

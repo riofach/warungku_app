@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../features/auth/data/models/user_role.dart';
+import '../../features/auth/data/providers/auth_provider.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
 import '../../features/pos/presentation/screens/pos_screen.dart';
@@ -35,11 +37,11 @@ class AppRoutes {
   static const String orders = '/orders';
   static const String orderDetail = '/orders/detail';
   static const String settings = '/settings';
-  static const String settingsOperatingHours = '/settings/operating-hours'; // Story 8.2
-  static const String settingsDelivery = '/settings/delivery'; // Story 8.3
-  static const String settingsGeneral = '/settings/general'; // Story 8.3
+  static const String settingsOperatingHours = '/settings/operating-hours';
+  static const String settingsDelivery = '/settings/delivery';
+  static const String settingsGeneral = '/settings/general';
   static const String items = '/items';
-  static const String itemEdit = '/items/edit'; // Story 3.5: Edit route base
+  static const String itemEdit = '/items/edit';
   static const String categories = '/categories';
   static const String reports = '/reports';
   static const String adminManagement = '/admin-management';
@@ -49,39 +51,90 @@ class AppRoutes {
   static const String purchaseFlow = '/purchase';
 }
 
+/// Routes a kasir is allowed to navigate to. Anything else triggers a
+/// redirect to [AppRoutes.pos]. Allowlist (not denylist) so new owner-only
+/// routes are blocked by default when they're added.
+///
+/// Kasir handles online orders, so [orders] and any [orderDetail]/:id path
+/// are allowed (the latter is matched via prefix in [_isKasirAllowed]).
+const _kasirAllowedRoutes = <String>{
+  AppRoutes.login,
+  AppRoutes.dashboard,
+  AppRoutes.pos,
+  AppRoutes.orders,
+  AppRoutes.settings,
+  AppRoutes.transactionSuccess,
+};
+
+/// Allowed-paths check for kasir. Exact-match against [_kasirAllowedRoutes]
+/// plus prefix-match for dynamic order detail (`/orders/detail/:id`).
+bool _isKasirAllowed(String location) {
+  if (_kasirAllowedRoutes.contains(location)) return true;
+  if (location.startsWith('${AppRoutes.orderDetail}/')) return true;
+  return false;
+}
+
 /// Global key for root navigator
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
-/// Router provider
+/// Router provider.
+///
+/// Redirect resolves in this order:
+///   1. No session → /login (except when already on /login)
+///   2. On /login + session + role resolved → route to default landing
+///      (owner → /dashboard, kasir → /pos)
+///   3. On /login + session + role unknown → stay on /login (loading)
+///   4. Kasir trying to access a route not in [_kasirAllowedRoutes] → /pos
+///   5. Role unknown + not on /login → /login (defensive default-deny)
 final routerProvider = Provider<GoRouter>((ref) {
+  // Bridge Riverpod into GoRouter: whenever auth state or resolved role
+  // changes, bump the ValueNotifier so GoRouter re-runs the redirect callback.
+  final refresh = ValueNotifier<int>(0);
+  ref.listen(supabaseAuthStateProvider, (_, _) => refresh.value++);
+  ref.listen(userRoleProvider, (_, _) => refresh.value++);
+  ref.onDispose(refresh.dispose);
+
   return GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: AppRoutes.login,
-    debugLogDiagnostics: kDebugMode, // Only log in debug mode
+    debugLogDiagnostics: kDebugMode,
+    refreshListenable: refresh,
     redirect: (context, state) {
       final isLoggedIn = SupabaseService.isAuthenticated;
       final isLoggingIn = state.matchedLocation == AppRoutes.login;
+      final role = ref.read(userRoleProvider);
 
-      // If not logged in and not on login page, redirect to login
       if (!isLoggedIn && !isLoggingIn) {
         return AppRoutes.login;
       }
 
-      // If logged in and on login page, redirect to dashboard
       if (isLoggedIn && isLoggingIn) {
-        return AppRoutes.dashboard;
+        if (role == UserRole.owner) return AppRoutes.dashboard;
+        if (role == UserRole.kasir) return AppRoutes.pos;
+        // Role still loading — stay on /login until currentUserProvider
+        // resolves. UI shows a small spinner there.
+        return null;
+      }
+
+      if (role == UserRole.kasir && !_isKasirAllowed(state.matchedLocation)) {
+        return AppRoutes.pos;
+      }
+
+      // Defensive: authenticated session but role hasn't resolved AND we're
+      // outside the login route. Hold at /login until role resolves so
+      // owner-only routes aren't briefly mounted.
+      if (role == null && isLoggedIn && !isLoggingIn) {
+        return AppRoutes.login;
       }
 
       return null;
     },
     routes: [
-      // Login route (no scaffold)
       GoRoute(
         path: AppRoutes.login,
         builder: (context, state) => const LoginScreen(),
       ),
 
-      // Main app with shell (bottom navigation)
       ShellRoute(
         builder: (context, state, child) => MainScaffold(child: child),
         routes: [
@@ -116,28 +169,20 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
 
-      // Standalone routes (pushed on top)
       GoRoute(
         path: AppRoutes.items,
         builder: (context, state) => const ItemsScreen(),
       ),
-      // Story 3.5: Edit item route (AC1, AC5)
-      // Path: /items/edit/:id
-      // Item data passed via extra parameter
-      // H4 fix: Handle null extra gracefully - redirect to items list if no data
       GoRoute(
         path: '${AppRoutes.itemEdit}/:id',
         redirect: (context, state) {
-          // If extra is null (e.g., deep link), redirect to items list
           if (state.extra == null) {
             return AppRoutes.items;
           }
           return null;
         },
         builder: (context, state) {
-          // Get item from extra parameter (guaranteed non-null by redirect)
           final item = state.extra as Item?;
-          // Debug: Log item details
           debugPrint('[ROUTER] Building ItemFormScreen. itemId=${state.uri.pathSegments.last}, item=$item');
           if (item != null) {
             debugPrint('[ROUTER] item.imageUrl: ${item.imageUrl}, item.name: ${item.name}');
@@ -151,7 +196,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.categories,
         builder: (context, state) => const CategoriesScreen(),
       ),
-      // AppRoutes.reports moved to ShellRoute
       GoRoute(
         path: AppRoutes.adminManagement,
         builder: (context, state) => const AdminListScreen(),

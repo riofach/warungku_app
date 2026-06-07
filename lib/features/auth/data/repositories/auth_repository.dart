@@ -45,36 +45,6 @@ class AuthRepository {
   /// Listen to auth state changes
   Stream<AuthState> get authStateChanges => SupabaseService.authStateChanges;
 
-  /// Create new admin user (owner only)
-  Future<AuthResult> createAdmin({
-    required String email,
-    required String password,
-    required String name,
-  }) async {
-    try {
-      // Use Supabase admin API to create user
-      // Note: This requires service_role key or Edge Function
-      // For MVP, this might need to be done via Supabase dashboard
-      
-      final response = await SupabaseService.client.auth.signUp(
-        email: email,
-        password: password,
-        data: {
-          'name': name,
-          'role': 'admin',
-        },
-      );
-
-      if (response.user == null) {
-        return AuthResult.error('Gagal membuat akun admin');
-      }
-
-      return AuthResult.success();
-    } catch (e) {
-      return AuthResult.fromException(e);
-    }
-  }
-
   /// Update user metadata
   Future<AuthResult> updateUserMetadata({
     String? name,

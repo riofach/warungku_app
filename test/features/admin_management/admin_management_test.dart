@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:warungku_app/features/admin_management/data/models/admin_account.dart';
 import 'package:warungku_app/features/admin_management/data/providers/admin_management_provider.dart';
 import 'package:warungku_app/features/auth/data/models/auth_result.dart';
+import 'package:warungku_app/features/auth/data/models/user_role.dart';
 
 void main() {
   group('AdminAccount Model', () {
@@ -20,7 +21,7 @@ void main() {
       expect(admin.id, '123-456-789');
       expect(admin.email, 'admin@test.com');
       expect(admin.name, 'Test Admin');
-      expect(admin.role, 'admin');
+      expect(admin.role, UserRole.kasir);
       expect(admin.isOwner, false);
     });
 
@@ -78,7 +79,7 @@ void main() {
         id: '123',
         email: 'test@test.com',
         name: 'Test',
-        role: 'admin',
+        role: UserRole.kasir,
         createdAt: DateTime(2026, 1, 19),
         updatedAt: DateTime(2026, 1, 19),
       );
@@ -88,7 +89,7 @@ void main() {
       expect(json['id'], '123');
       expect(json['email'], 'test@test.com');
       expect(json['name'], 'Test');
-      expect(json['role'], 'admin');
+      expect(json['role'], 'kasir');
     });
 
     test('should get displayName from name', () {
@@ -96,7 +97,7 @@ void main() {
         id: '123',
         email: 'test@test.com',
         name: 'Test Admin',
-        role: 'admin',
+        role: UserRole.kasir,
         createdAt: DateTime(2026, 1, 19),
         updatedAt: DateTime(2026, 1, 19),
       );
@@ -109,7 +110,7 @@ void main() {
         id: '123',
         email: 'test@test.com',
         name: null,
-        role: 'admin',
+        role: UserRole.kasir,
         createdAt: DateTime(2026, 1, 19),
         updatedAt: DateTime(2026, 1, 19),
       );
@@ -122,7 +123,7 @@ void main() {
         id: '123',
         email: 'test@test.com',
         name: 'John Doe',
-        role: 'admin',
+        role: UserRole.kasir,
         createdAt: DateTime(2026, 1, 19),
         updatedAt: DateTime(2026, 1, 19),
       );
@@ -135,7 +136,7 @@ void main() {
         id: '123',
         email: 'test@test.com',
         name: 'John',
-        role: 'admin',
+        role: UserRole.kasir,
         createdAt: DateTime(2026, 1, 19),
         updatedAt: DateTime(2026, 1, 19),
       );
@@ -148,7 +149,7 @@ void main() {
         id: '123',
         email: 'test@test.com',
         name: null,
-        role: 'admin',
+        role: UserRole.kasir,
         createdAt: DateTime(2026, 1, 19),
         updatedAt: DateTime(2026, 1, 19),
       );
@@ -162,7 +163,7 @@ void main() {
         id: '123',
         email: '',
         name: null,
-        role: 'admin',
+        role: UserRole.kasir,
         createdAt: DateTime(2026, 1, 19),
         updatedAt: DateTime(2026, 1, 19),
       );
@@ -176,7 +177,7 @@ void main() {
         id: '123',
         email: 'test@test.com',
         name: ' ',
-        role: 'admin',
+        role: UserRole.kasir,
         createdAt: DateTime(2026, 1, 19),
         updatedAt: DateTime(2026, 1, 19),
       );
@@ -190,7 +191,7 @@ void main() {
         id: '123',
         email: 'test@test.com',
         name: 'Test',
-        role: 'admin',
+        role: UserRole.kasir,
         createdAt: DateTime(2026, 1, 19),
         updatedAt: DateTime(2026, 1, 19),
       );
@@ -199,7 +200,7 @@ void main() {
         id: '123',
         email: 'different@test.com',
         name: 'Different',
-        role: 'owner',
+        role: UserRole.owner,
         createdAt: DateTime(2026, 1, 20),
         updatedAt: DateTime(2026, 1, 20),
       );
@@ -212,7 +213,7 @@ void main() {
         id: '123',
         email: 'test@test.com',
         name: 'Test',
-        role: 'admin',
+        role: UserRole.kasir,
         createdAt: DateTime(2026, 1, 19),
         updatedAt: DateTime(2026, 1, 19),
       );
@@ -247,7 +248,7 @@ void main() {
           id: '1',
           email: 'test@test.com',
           name: 'Test',
-          role: 'admin',
+          role: UserRole.kasir,
           createdAt: DateTime(2026, 1, 19),
           updatedAt: DateTime(2026, 1, 19),
         ),
@@ -432,7 +433,7 @@ void main() {
         id: '123-456-789',
         email: 'test@test.com',
         name: 'Test',
-        role: 'admin',
+        role: UserRole.kasir,
         createdAt: DateTime(2026, 1, 19),
         updatedAt: DateTime(2026, 1, 19),
       );
@@ -448,7 +449,7 @@ void main() {
         id: '999-888-777',
         email: 'other@test.com',
         name: 'Other',
-        role: 'admin',
+        role: UserRole.kasir,
         createdAt: DateTime(2026, 1, 19),
         updatedAt: DateTime(2026, 1, 19),
       );
@@ -463,7 +464,7 @@ void main() {
         id: '123',
         email: 'owner@test.com',
         name: 'Owner',
-        role: 'owner',
+        role: UserRole.owner,
         createdAt: DateTime(2026, 1, 19),
         updatedAt: DateTime(2026, 1, 19),
       );
@@ -476,7 +477,7 @@ void main() {
         id: '123',
         email: 'admin@test.com',
         name: 'Admin',
-        role: 'admin',
+        role: UserRole.kasir,
         createdAt: DateTime(2026, 1, 19),
         updatedAt: DateTime(2026, 1, 19),
       );
@@ -490,7 +491,7 @@ void main() {
         id: '123-456-789',
         email: 'test@test.com',
         name: 'Test',
-        role: 'admin',
+        role: UserRole.kasir,
         createdAt: DateTime(2026, 1, 19),
         updatedAt: DateTime(2026, 1, 19),
       );
@@ -508,7 +509,7 @@ void main() {
         id: '123-456-789',
         email: 'owner@test.com',
         name: 'Owner',
-        role: 'owner',
+        role: UserRole.owner,
         createdAt: DateTime(2026, 1, 19),
         updatedAt: DateTime(2026, 1, 19),
       );
@@ -525,7 +526,7 @@ void main() {
         id: '123-456-789',
         email: 'admin@test.com',
         name: 'Admin',
-        role: 'admin',
+        role: UserRole.kasir,
         createdAt: DateTime(2026, 1, 19),
         updatedAt: DateTime(2026, 1, 19),
       );

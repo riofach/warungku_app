@@ -1,22 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/validators.dart';
-import '../../../../core/router/app_router.dart';
+import '../../../auth/data/models/user_role.dart';
 import '../../data/providers/admin_management_provider.dart';
 
-/// Dialog for adding new admin account
-/// FR2: Owner dapat membuat akun admin tambahan
-/// 
-/// WARNING: Creating an admin will log out the current owner due to
-/// Supabase signUp() behavior. Owner will need to re-login.
+/// Dialog for adding a new account (owner or kasir).
+///
+/// Owner stays signed in after creation — the admin-management Edge Function
+/// performs the create server-side with the service role, so the local
+/// session is untouched.
 class AddAdminDialog extends ConsumerStatefulWidget {
   const AddAdminDialog({super.key});
 
-  /// Show the dialog and return true if admin was created
+  /// Show the dialog and return true if account was created.
   static Future<bool> show(BuildContext context) async {
     final result = await showDialog<bool>(
       context: context,
@@ -35,6 +34,7 @@ class _AddAdminDialogState extends ConsumerState<AddAdminDialog> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  UserRole _selectedRole = UserRole.kasir;
   bool _obscurePassword = true;
 
   @override
@@ -49,59 +49,26 @@ class _AddAdminDialogState extends ConsumerState<AddAdminDialog> {
   Widget build(BuildContext context) {
     final createState = ref.watch(createAdminNotifierProvider);
 
-    // Listen for success and navigate to login
     ref.listen<CreateAdminState>(createAdminNotifierProvider, (previous, next) {
       if (next.isSuccess) {
-        // Reset state and close dialog
         ref.read(createAdminNotifierProvider.notifier).reset();
-        Navigator.of(context).pop(true);
-        
-        // Navigate to login because owner's session was cleared
-        // Use addPostFrameCallback to ensure dialog is closed first
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (context.mounted) {
-            context.go(AppRoutes.login);
-          }
-        });
+        if (mounted) Navigator.of(context).pop(true);
       }
     });
 
     return AlertDialog(
-      title: const Text('Tambah Admin'),
+      title: const Text('Tambah Akun'),
       content: Form(
         key: _formKey,
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Warning about re-login
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.sm),
-                margin: const EdgeInsets.only(bottom: AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: AppColors.warningLight,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.info_outline, color: AppColors.warning, size: 20),
-                    SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Text(
-                        'Setelah menambah admin, Anda perlu login kembali.',
-                        style: TextStyle(color: AppColors.warning, fontSize: 12),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              
-              // Name field
               TextFormField(
                 controller: _nameController,
                 decoration: const InputDecoration(
                   labelText: 'Nama',
-                  hintText: 'Masukkan nama admin',
+                  hintText: 'Masukkan nama',
                   prefixIcon: Icon(Icons.person_outline),
                 ),
                 textCapitalization: TextCapitalization.words,
@@ -118,7 +85,6 @@ class _AddAdminDialogState extends ConsumerState<AddAdminDialog> {
               ),
               const SizedBox(height: AppSpacing.md),
 
-              // Email field
               TextFormField(
                 controller: _emailController,
                 decoration: const InputDecoration(
@@ -140,7 +106,6 @@ class _AddAdminDialogState extends ConsumerState<AddAdminDialog> {
               ),
               const SizedBox(height: AppSpacing.md),
 
-              // Password field
               TextFormField(
                 controller: _passwordController,
                 decoration: InputDecoration(
@@ -170,8 +135,40 @@ class _AddAdminDialogState extends ConsumerState<AddAdminDialog> {
                 },
                 enabled: !createState.isLoading,
               ),
+              const SizedBox(height: AppSpacing.md),
 
-              // Error message
+              DropdownButtonFormField<UserRole>(
+                initialValue: _selectedRole,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'Role',
+                  prefixIcon: Icon(Icons.badge_outlined),
+                ),
+                items: const [
+                  DropdownMenuItem(
+                    value: UserRole.kasir,
+                    child: Text(
+                      'Kasir (akses Dashboard & POS)',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  DropdownMenuItem(
+                    value: UserRole.owner,
+                    child: Text(
+                      'Owner (akses penuh)',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+                onChanged: createState.isLoading
+                    ? null
+                    : (value) {
+                        if (value != null) {
+                          setState(() => _selectedRole = value);
+                        }
+                      },
+              ),
+
               if (createState.hasError) ...[
                 const SizedBox(height: AppSpacing.md),
                 Container(
@@ -231,6 +228,7 @@ class _AddAdminDialogState extends ConsumerState<AddAdminDialog> {
             email: _emailController.text.trim(),
             password: _passwordController.text,
             name: _nameController.text.trim(),
+            role: _selectedRole,
           );
     }
   }

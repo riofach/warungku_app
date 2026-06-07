@@ -32,13 +32,13 @@ class DeleteAdminDialog extends ConsumerWidget {
     final actionState = ref.watch(deleteAdminNotifierProvider);
 
     return AlertDialog(
-      title: const Text('Hapus Admin?'),
+      title: const Text('Hapus Akun?'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Yakin ingin menghapus admin ${admin.displayName}? Tindakan ini tidak dapat dibatalkan.',
+            'Yakin ingin menghapus akun ${admin.displayName}? Tindakan ini tidak dapat dibatalkan.',
             style: const TextStyle(
               fontSize: 15,
               height: 1.4,

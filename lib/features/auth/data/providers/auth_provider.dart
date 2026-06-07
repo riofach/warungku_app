@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import '../../../../core/services/supabase_service.dart';
 import '../models/admin_user.dart';
+import '../models/user_role.dart';
 import '../repositories/auth_repository.dart';
 
 /// Provider for AuthRepository
@@ -10,64 +11,105 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository();
 });
 
-/// Stream provider for Supabase auth state changes
-/// This is the SOURCE OF TRUTH for auth state
+/// Stream provider for Supabase auth state changes (source of truth for session)
 final supabaseAuthStateProvider = StreamProvider<supabase.AuthState>((ref) {
   final authRepo = ref.watch(authRepositoryProvider);
   return authRepo.authStateChanges;
 });
 
-/// Provider for current user - REACTIVE to Supabase auth stream
-/// Returns AdminUser if logged in, null otherwise
-/// Uses Supabase stream for reliable updates after login/logout
-/// Also fetches latest role from public.users table
+/// Current authenticated user — REACTIVE to Supabase auth stream + role
+/// resolution from public.users.
+///
+/// Emits in this order on every session change:
+///   1. `null` when no session.
+///   2. AdminUser built from auth metadata (role may be null if metadata
+///      doesn't carry it — DO NOT default to owner; default-deny).
+///   3. AdminUser with role updated from public.users (authoritative).
+///
+/// If the public.users row doesn't exist yet (e.g. immediately after signUp
+/// before the handle_new_user trigger has visible commit, or during
+/// migration), the second emit carries `role: null` — UI uses
+/// [isRoleUnknown] to suppress owner-only affordances.
 final currentUserProvider = StreamProvider<AdminUser?>((ref) async* {
-  // Watch auth repository for reliable updates
   final authRepo = ref.watch(authRepositoryProvider);
-  
+
   await for (final authState in authRepo.authStateChanges) {
     final user = authState.session?.user;
     if (user == null) {
-      debugPrint('currentUserProvider: No user in session');
+      debugPrint('currentUserProvider: No session');
       yield null;
       continue;
     }
 
-    // 1. Create user from metadata (fast)
-    final adminUser = AdminUser.fromSupabaseUser(user);
-    yield adminUser;
+    // Phase 1: emit metadata-based user immediately so UI can render.
+    final fromMetadata = AdminUser.fromSupabaseUser(user);
+    yield fromMetadata;
 
-    // 2. Fetch latest role from database (async)
+    // Phase 2: fetch authoritative role from public.users.
     try {
-      final supabase = SupabaseService.client;
-      final data = await supabase
+      final client = SupabaseService.client;
+      final data = await client
           .from('users')
-          .select('role')
+          .select('role, name')
           .eq('id', user.id)
-          .single();
-      
-      final role = data['role'] as String?;
-      if (role != null && role != adminUser.role) {
-        debugPrint('currentUserProvider: Updated role from DB: $role');
-        yield adminUser.copyWith(role: role);
+          .maybeSingle();
+
+      if (data == null) {
+        // Row not (yet) in public.users — keep metadata-derived user.
+        // If metadata role was also null, AdminUser stays role-unknown and
+        // UI/router defaults to deny.
+        debugPrint('currentUserProvider: no public.users row for ${user.id}');
+        continue;
+      }
+
+      final dbRole = UserRole.fromString(data['role'] as String?);
+      final dbName = data['name'] as String?;
+
+      if (dbRole != fromMetadata.role ||
+          (dbName != null && dbName != fromMetadata.name)) {
+        debugPrint(
+          'currentUserProvider: refreshing from DB '
+          '(role=${dbRole?.value}, name=$dbName)',
+        );
+        yield fromMetadata.copyWith(
+          role: dbRole,
+          clearRole: dbRole == null,
+          name: dbName ?? fromMetadata.name,
+        );
       } else {
-        debugPrint('currentUserProvider: Role from DB matches metadata: ${adminUser.role}');
+        debugPrint(
+          'currentUserProvider: DB role matches metadata (${dbRole?.value})',
+        );
       }
     } catch (e) {
-      debugPrint('currentUserProvider: Error fetching role from DB: $e');
-      // Keep yielding the metadata-based user
+      // Network/RLS error — keep metadata-derived user. If metadata role
+      // was null, app stays in default-deny state until next auth event.
+      debugPrint('currentUserProvider: error fetching public.users: $e');
     }
   }
 });
 
-/// Provider for auth state
-/// Returns true if user is authenticated
+/// True when a session exists.
 final isAuthenticatedProvider = Provider<bool>((ref) {
-  final currentUserAsync = ref.watch(currentUserProvider);
-  return currentUserAsync.asData?.value != null;
+  return ref.watch(currentUserProvider).asData?.value != null;
 });
 
-/// Auth status enum for UI
+/// Resolved role of the current user, or null when no session OR role still
+/// loading. UI/router treats null as default-deny.
+final userRoleProvider = Provider<UserRole?>((ref) {
+  return ref.watch(currentUserProvider).asData?.value?.role;
+});
+
+/// Convenience: true iff role is explicitly resolved to owner.
+final isOwnerProvider = Provider<bool>((ref) {
+  return ref.watch(userRoleProvider) == UserRole.owner;
+});
+
+/// Convenience: true iff role is explicitly resolved to kasir.
+final isKasirProvider = Provider<bool>((ref) {
+  return ref.watch(userRoleProvider) == UserRole.kasir;
+});
+
 enum AuthStatus {
   initial,
   loading,
@@ -76,7 +118,6 @@ enum AuthStatus {
   error,
 }
 
-/// Auth state class for the app
 class AppAuthState {
   final AuthStatus status;
   final String? errorMessage;
@@ -100,9 +141,6 @@ class AppAuthState {
   bool get hasError => status == AuthStatus.error;
 }
 
-/// Auth notifier using Notifier (Riverpod 2.0+ style)
-/// Manages login/logout actions and loading/error states
-/// Note: currentUserProvider uses Supabase stream directly for user data
 class AuthNotifier extends Notifier<AppAuthState> {
   @override
   AppAuthState build() {
@@ -126,8 +164,6 @@ class AuthNotifier extends Notifier<AppAuthState> {
     );
 
     if (result.success) {
-      // Supabase stream will automatically update currentUserProvider
-      // with the new user data from the session
       debugPrint('AuthNotifier: signIn success for $email');
       state = AppAuthState.authenticated();
       return true;
@@ -137,20 +173,16 @@ class AuthNotifier extends Notifier<AppAuthState> {
     }
   }
 
-  /// Sign out current user
-  /// Returns true if successful, false if error occurred
   Future<bool> signOut() async {
     state = AppAuthState.loading();
     final authRepo = ref.read(authRepositoryProvider);
     final result = await authRepo.signOut();
-    
+
     if (result.success) {
-      // Supabase stream will automatically clear user data
       debugPrint('AuthNotifier: signOut success');
       state = AppAuthState.unauthenticated();
       return true;
     } else {
-      // Logout failed - show error but stay in current state
       state = AppAuthState.error(result.errorMessage ?? 'Gagal keluar dari aplikasi');
       return false;
     }
@@ -163,7 +195,6 @@ class AuthNotifier extends Notifier<AppAuthState> {
   }
 }
 
-/// Provider for AuthNotifier
 final authNotifierProvider = NotifierProvider<AuthNotifier, AppAuthState>(() {
   return AuthNotifier();
 });

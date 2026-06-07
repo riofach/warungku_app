@@ -50,7 +50,7 @@ class _EditPasswordDialogState extends ConsumerState<EditPasswordDialog> {
     final actionState = ref.watch(updatePasswordNotifierProvider);
 
     return AlertDialog(
-      title: Text('Ubah Password ${widget.admin.displayName}'),
+      title: Text('Ubah Password — ${widget.admin.displayName}'),
       content: Form(
         key: _formKey,
         child: Column(

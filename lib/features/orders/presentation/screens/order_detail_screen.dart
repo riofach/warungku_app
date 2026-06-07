@@ -7,6 +7,7 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/confirmation_dialog.dart';
 import '../../../../core/widgets/error_widget.dart';
 import '../../../../core/widgets/loading_widget.dart';
+import '../../../auth/data/providers/auth_provider.dart';
 import '../../data/models/order_model.dart';
 import '../../data/providers/orders_provider.dart';
 import '../widgets/customer_info_card.dart';
@@ -44,6 +45,12 @@ class OrderDetailScreen extends ConsumerWidget {
         actions: [
           orderAsync.when(
             data: (order) {
+              // "Batalkan Pesanan" is owner-only — kasir can mark orders as
+              // ready/picked up via OrderActionButton but cannot cancel.
+              final isOwner = ref.watch(isOwnerProvider);
+              if (!isOwner) {
+                return const SizedBox.shrink();
+              }
               // Show cancel option only for pending or paid orders
               if (order.status == OrderStatus.pending ||
                   order.status == OrderStatus.paid) {

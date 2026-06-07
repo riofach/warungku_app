@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/formatters.dart';
+import '../../../auth/data/models/user_role.dart';
 import '../../../auth/data/providers/auth_provider.dart';
 import '../../data/models/admin_account.dart';
 import '../../data/providers/admin_management_provider.dart';
@@ -11,11 +12,12 @@ import '../widgets/add_admin_dialog.dart';
 import '../widgets/delete_admin_dialog.dart';
 import '../widgets/edit_password_dialog.dart';
 
-/// Admin List Screen
-/// FR2: Owner dapat membuat akun admin tambahan
-/// FR2a: Owner dapat mengubah password admin
-/// FR2b: Owner dapat menghapus akun admin
-/// Shows list of admin accounts with edit/delete actions
+/// Kelola Akun screen — owner-only. Lists owner & kasir accounts from
+/// public.users with edit-password / delete actions.
+///
+/// Self-protection: actions are hidden for the owner's own account.
+/// Owner-protection: actions are hidden for ALL owner rows (an owner can be
+/// removed only by another owner who is not them).
 class AdminListScreen extends ConsumerStatefulWidget {
   const AdminListScreen({super.key});
 
@@ -27,7 +29,6 @@ class _AdminListScreenState extends ConsumerState<AdminListScreen> {
   @override
   void initState() {
     super.initState();
-    // Load admins when screen opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(adminListNotifierProvider.notifier).loadAdmins();
     });
@@ -41,22 +42,20 @@ class _AdminListScreenState extends ConsumerState<AdminListScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Kelola Admin'),
+        title: const Text('Kelola Akun'),
       ),
       body: _buildBody(adminListState, currentUser?.id),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _handleAddAdmin(context),
         icon: const Icon(Icons.person_add),
-        label: const Text('Tambah Admin'),
+        label: const Text('Tambah Akun'),
       ),
     );
   }
 
   Widget _buildBody(AdminListState state, String? currentUserId) {
     if (state.isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
+      return const Center(child: CircularProgressIndicator());
     }
 
     if (state.hasError) {
@@ -64,11 +63,7 @@ class _AdminListScreenState extends ConsumerState<AdminListScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.error_outline,
-              size: 64,
-              color: AppColors.error,
-            ),
+            const Icon(Icons.error_outline, size: 64, color: AppColors.error),
             const SizedBox(height: AppSpacing.md),
             Text(
               state.errorMessage ?? 'Terjadi kesalahan',
@@ -98,15 +93,12 @@ class _AdminListScreenState extends ConsumerState<AdminListScreen> {
             ),
             const SizedBox(height: AppSpacing.md),
             const Text(
-              'Belum ada admin',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w500,
-              ),
+              'Belum ada akun',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: AppSpacing.sm),
             const Text(
-              'Tambahkan admin untuk membantu\nmengelola warung',
+              'Tambahkan akun untuk membantu\nmengelola warung',
               textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.textSecondary),
             ),
@@ -122,8 +114,9 @@ class _AdminListScreenState extends ConsumerState<AdminListScreen> {
         itemCount: state.admins.length,
         itemBuilder: (context, index) {
           final admin = state.admins[index];
-          // AC7: Self-protection - hide actions for owner's own account
           final isSelf = currentUserId == admin.id;
+          // Hide actions for self AND for any owner row (owners are managed
+          // out of band, not by other peers).
           return _AdminCard(
             admin: admin,
             showActions: !isSelf && !admin.isOwner,
@@ -140,7 +133,7 @@ class _AdminListScreenState extends ConsumerState<AdminListScreen> {
     if (success && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Admin berhasil ditambahkan'),
+          content: Text('Akun berhasil ditambahkan'),
           backgroundColor: AppColors.success,
         ),
       );
@@ -164,7 +157,7 @@ class _AdminListScreenState extends ConsumerState<AdminListScreen> {
     if (success && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Admin ${admin.displayName} berhasil dihapus'),
+          content: Text('Akun ${admin.displayName} berhasil dihapus'),
           backgroundColor: AppColors.success,
         ),
       );
@@ -172,7 +165,6 @@ class _AdminListScreenState extends ConsumerState<AdminListScreen> {
   }
 }
 
-/// Admin card widget with actions
 class _AdminCard extends StatelessWidget {
   final AdminAccount admin;
   final bool showActions;
@@ -197,7 +189,6 @@ class _AdminCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Avatar
             CircleAvatar(
               backgroundColor: admin.isOwner ? AppColors.primary : AppColors.secondary,
               child: Text(
@@ -209,8 +200,7 @@ class _AdminCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: AppSpacing.md),
-            
-            // Info
+
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -227,27 +217,8 @@ class _AdminCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      if (admin.isOwner) ...[
-                        const SizedBox(width: AppSpacing.sm),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.sm,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Text(
-                            'Owner',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ),
-                      ],
+                      const SizedBox(width: AppSpacing.sm),
+                      _RoleBadge(role: admin.role),
                     ],
                   ),
                   const SizedBox(height: 2),
@@ -260,7 +231,6 @@ class _AdminCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    // LOW-3 FIX: Use centralized formatter instead of local DateFormat
                     'Bergabung ${Formatters.formatDateCompact(admin.createdAt)}',
                     style: TextStyle(
                       fontSize: 12,
@@ -270,25 +240,52 @@ class _AdminCard extends StatelessWidget {
                 ],
               ),
             ),
-            
-            // Actions (only shown for non-self, non-owner admins)
+
             if (showActions) ...[
-              // Edit password button
               IconButton(
                 onPressed: onEditPassword,
                 icon: const Icon(Icons.lock_reset),
                 tooltip: 'Ubah Password',
                 color: AppColors.textSecondary,
               ),
-              // Delete button
               IconButton(
                 onPressed: onDelete,
                 icon: const Icon(Icons.delete_outline),
-                tooltip: 'Hapus Admin',
+                tooltip: 'Hapus Akun',
                 color: AppColors.error,
               ),
             ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RoleBadge extends StatelessWidget {
+  final UserRole role;
+
+  const _RoleBadge({required this.role});
+
+  @override
+  Widget build(BuildContext context) {
+    final isOwner = role == UserRole.owner;
+    final color = isOwner ? AppColors.primary : AppColors.secondary;
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: 2,
+      ),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        role.label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: color,
         ),
       ),
     );

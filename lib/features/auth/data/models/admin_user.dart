@@ -1,12 +1,19 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'user_role.dart';
 
-/// Admin user model for WarungKu
-/// Represents an authenticated admin user
+/// Authenticated user model for warungku_app.
+///
+/// Naming kept as [AdminUser] for backwards compatibility with existing
+/// callers; semantically represents any authenticated user (owner or kasir).
+///
+/// [role] is nullable — null means role has not yet been resolved from
+/// public.users (loading state). Callers MUST default-deny on null
+/// (treat as "no permissions yet").
 class AdminUser {
   final String id;
   final String email;
   final String? name;
-  final String role;
+  final UserRole? role;
   final DateTime createdAt;
   final DateTime? lastSignInAt;
 
@@ -19,55 +26,62 @@ class AdminUser {
     this.lastSignInAt,
   });
 
-  /// Create AdminUser from Supabase User object
+  /// Build from Supabase auth User. Role parsed from
+  /// `user_metadata.role` — returns null when metadata is missing or carries
+  /// an unknown role; caller fetches the authoritative role from
+  /// `public.users` next.
   factory AdminUser.fromSupabaseUser(User user) {
     final metadata = user.userMetadata ?? {};
-    
+
     return AdminUser(
       id: user.id,
       email: user.email ?? '',
       name: metadata['name'] as String?,
-      role: metadata['role'] as String? ?? 'admin',
+      role: UserRole.fromString(metadata['role'] as String?),
       createdAt: DateTime.parse(user.createdAt),
-      lastSignInAt: user.lastSignInAt != null 
-          ? DateTime.parse(user.lastSignInAt!) 
+      lastSignInAt: user.lastSignInAt != null
+          ? DateTime.parse(user.lastSignInAt!)
           : null,
     );
   }
 
-  /// Create AdminUser from JSON (for API responses)
   factory AdminUser.fromJson(Map<String, dynamic> json) {
     return AdminUser(
       id: json['id'] as String,
       email: json['email'] as String,
       name: json['name'] as String?,
-      role: json['role'] as String? ?? 'admin',
+      role: UserRole.fromString(json['role'] as String?),
       createdAt: DateTime.parse(json['created_at'] as String),
-      lastSignInAt: json['last_sign_in_at'] != null 
-          ? DateTime.parse(json['last_sign_in_at'] as String) 
+      lastSignInAt: json['last_sign_in_at'] != null
+          ? DateTime.parse(json['last_sign_in_at'] as String)
           : null,
     );
   }
 
-  /// Convert to JSON
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'email': email,
       'name': name,
-      'role': role,
+      'role': role?.value,
       'created_at': createdAt.toIso8601String(),
       'last_sign_in_at': lastSignInAt?.toIso8601String(),
     };
   }
 
-  /// Check if user is owner (can manage other admins)
-  bool get isOwner => role == 'owner';
+  /// True only when role is explicitly resolved to owner.
+  /// Null role returns false (default-deny).
+  bool get isOwner => role == UserRole.owner;
 
-  /// Get display name (name or email)
+  /// True only when role is explicitly resolved to kasir.
+  bool get isKasir => role == UserRole.kasir;
+
+  /// True when role is still loading or unresolvable — used by UI to
+  /// suppress owner-only affordances during the resolution window.
+  bool get isRoleUnknown => role == null;
+
   String get displayName => name ?? email.split('@').first;
 
-  /// Get initials for avatar
   String get initials {
     if (name != null && name!.isNotEmpty) {
       final parts = name!.split(' ');
@@ -76,11 +90,11 @@ class AdminUser {
       }
       return name![0].toUpperCase();
     }
-    return email[0].toUpperCase();
+    return email.isNotEmpty ? email[0].toUpperCase() : '?';
   }
 
   @override
-  String toString() => 'AdminUser(id: $id, email: $email, role: $role)';
+  String toString() => 'AdminUser(id: $id, email: $email, role: ${role?.value})';
 
   @override
   bool operator ==(Object other) =>
@@ -90,12 +104,12 @@ class AdminUser {
   @override
   int get hashCode => id.hashCode;
 
-  /// Create a copy with updated fields
   AdminUser copyWith({
     String? id,
     String? email,
     String? name,
-    String? role,
+    UserRole? role,
+    bool clearRole = false,
     DateTime? createdAt,
     DateTime? lastSignInAt,
   }) {
@@ -103,7 +117,7 @@ class AdminUser {
       id: id ?? this.id,
       email: email ?? this.email,
       name: name ?? this.name,
-      role: role ?? this.role,
+      role: clearRole ? null : (role ?? this.role),
       createdAt: createdAt ?? this.createdAt,
       lastSignInAt: lastSignInAt ?? this.lastSignInAt,
     );

@@ -11,91 +11,84 @@ import '../../../orders/data/repositories/order_repository.dart';
 import '../widgets/account_header.dart';
 import '../widgets/settings_tile.dart';
 
-/// Settings/Menu screen
-/// FR48: Admin dapat melihat informasi akun dan profil warung
-/// FR4: Admin dapat logout dari aplikasi
+/// Menu / Settings screen — role-aware.
+///
+/// Owner sees full sections: Kelola Data, Laporan, Pengaturan, Admin,
+/// Development Tools.
+/// Kasir sees a minimal screen: account info + logout only.
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authNotifierProvider);
-    final currentUserAsync = ref.watch(currentUserProvider);
-    final currentUser = currentUserAsync.asData?.value;
+    final isOwner = ref.watch(isOwnerProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Menu')),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.screenPadding),
         children: [
-          // Account section
           const AccountHeader(),
-
           const SizedBox(height: AppSpacing.md),
 
-          // Data Management section
-          const _SectionHeader(title: 'Kelola Data'),
-          SettingsTile(
-            icon: Icons.inventory_2_outlined,
-            title: 'Barang',
-            subtitle: 'Kelola produk warung',
-            onTap: () => context.push(AppRoutes.items),
-          ),
-          SettingsTile(
-            icon: Icons.shopping_cart_checkout,
-            title: 'Input Pembelian',
-            subtitle: 'Catat pembelian & update stok',
-            onTap: () => context.push(AppRoutes.purchaseFlow),
-          ),
-          SettingsTile(
-            icon: Icons.category_outlined,
-            title: 'Kategori',
-            subtitle: 'Kelola kategori barang',
-            onTap: () => context.push(AppRoutes.categories),
-          ),
+          if (isOwner) ...[
+            const _SectionHeader(title: 'Kelola Data'),
+            SettingsTile(
+              icon: Icons.inventory_2_outlined,
+              title: 'Barang',
+              subtitle: 'Kelola produk warung',
+              onTap: () => context.push(AppRoutes.items),
+            ),
+            SettingsTile(
+              icon: Icons.shopping_cart_checkout,
+              title: 'Input Pembelian',
+              subtitle: 'Catat pembelian & update stok',
+              onTap: () => context.push(AppRoutes.purchaseFlow),
+            ),
+            SettingsTile(
+              icon: Icons.category_outlined,
+              title: 'Kategori',
+              subtitle: 'Kelola kategori barang',
+              onTap: () => context.push(AppRoutes.categories),
+            ),
 
-          // Reports section
-          const _SectionHeader(title: 'Laporan'),
-          SettingsTile(
-            icon: Icons.receipt_long_outlined,
-            title: 'Riwayat Transaksi',
-            subtitle: 'Lihat semua transaksi kasir',
-            onTap: () => context.push(AppRoutes.transactionHistory),
-          ),
+            const _SectionHeader(title: 'Laporan'),
+            SettingsTile(
+              icon: Icons.receipt_long_outlined,
+              title: 'Riwayat Transaksi',
+              subtitle: 'Lihat semua transaksi kasir',
+              onTap: () => context.push(AppRoutes.transactionHistory),
+            ),
 
-          // Settings section
-          const _SectionHeader(title: 'Pengaturan'),
-          SettingsTile(
-            icon: Icons.schedule_outlined,
-            title: 'Jam Operasional',
-            subtitle: 'Atur waktu buka tutup',
-            onTap: () => context.push(AppRoutes.settingsOperatingHours),
-          ),
-          SettingsTile(
-            icon: Icons.settings_outlined,
-            title: 'Delivery & WhatsApp',
-            subtitle: 'Atur pengiriman & kontak',
-            onTap: () => context.push(AppRoutes.settingsDelivery),
-          ),
+            const _SectionHeader(title: 'Pengaturan'),
+            SettingsTile(
+              icon: Icons.schedule_outlined,
+              title: 'Jam Operasional',
+              subtitle: 'Atur waktu buka tutup',
+              onTap: () => context.push(AppRoutes.settingsOperatingHours),
+            ),
+            SettingsTile(
+              icon: Icons.settings_outlined,
+              title: 'Delivery & WhatsApp',
+              subtitle: 'Atur pengiriman & kontak',
+              onTap: () => context.push(AppRoutes.settingsDelivery),
+            ),
 
-          // Admin Management section (Owner only)
-          if (currentUser?.isOwner ?? false) ...[
-            const _SectionHeader(title: 'Admin'),
+            const _SectionHeader(title: 'Akun'),
             SettingsTile(
               icon: Icons.group_outlined,
-              title: 'Kelola Admin',
-              subtitle: 'Tambah atau kelola akun admin',
+              title: 'Kelola Akun',
+              subtitle: 'Tambah atau kelola akun owner & kasir',
               onTap: () => context.push(AppRoutes.adminManagement),
             ),
-          ],
 
-          // Development Tools
-          const _SectionHeader(title: 'Development Tools'),
-          const _SimulationButton(),
+            const _SectionHeader(title: 'Development Tools'),
+            const _SimulationButton(),
+          ],
 
           const SizedBox(height: AppSpacing.lg),
 
-          // Logout button
           _LogoutButton(
             isLoading: authState.isLoading,
             onLogout: () async {
@@ -107,19 +100,13 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  /// Handle logout flow
-  /// Shows confirmation dialog, then calls AuthNotifier.signOut()
-  /// Shows error SnackBar if logout fails
   Future<void> _handleLogout(BuildContext context, WidgetRef ref) async {
-    // Show confirmation dialog - AC2
     final confirmed = await LogoutConfirmationDialog.show(context);
 
     if (confirmed && context.mounted) {
-      // Call AuthNotifier.signOut() - AC3
       final success = await ref.read(authNotifierProvider.notifier).signOut();
 
       if (!success && context.mounted) {
-        // Show error message if logout failed
         final authState = ref.read(authNotifierProvider);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -129,11 +116,8 @@ class SettingsScreen extends ConsumerWidget {
             backgroundColor: AppColors.error,
           ),
         );
-        // Clear the error state
         ref.read(authNotifierProvider.notifier).clearError();
       } else if (success && context.mounted) {
-        // Navigation is handled by go_router redirect
-        // when auth state changes to unauthenticated
         context.go(AppRoutes.login);
       }
     }
@@ -208,8 +192,6 @@ class _SimulationButtonState extends ConsumerState<_SimulationButton> {
   }
 }
 
-/// Logout button widget
-/// Shows loading state during logout process
 class _LogoutButton extends StatelessWidget {
   final bool isLoading;
   final VoidCallback onLogout;

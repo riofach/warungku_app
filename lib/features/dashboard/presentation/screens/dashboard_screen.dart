@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../auth/data/providers/auth_provider.dart';
 import '../../../inventory/data/providers/item_form_provider.dart';
 import '../../data/providers/dashboard_provider.dart';
 import '../../data/providers/low_stock_provider.dart';
@@ -18,7 +19,11 @@ import '../widgets/transaction_count_card.dart';
 import '../widgets/order_summary_card.dart';
 import '../widgets/top_selling_card.dart';
 
-/// Dashboard screen - main home screen for admin
+/// Dashboard screen — main home screen.
+///
+/// Kasir sees a slimmed view: greeting + omset + transaction count.
+/// Profit, online orders, low-stock alerts, and top-selling analytics are
+/// owner-only.
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
@@ -30,22 +35,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    // Auto-refresh dashboard data when screen is first created
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshData();
     });
   }
 
-  // Notification is now handled globally by NewOrderNotificationOverlayHost
-  // via newOrderNotificationStreamProvider. No SnackBar needed here.
-
-  /// Refresh dashboard and low stock data
   void _refreshData() {
     ref.invalidate(dashboardProvider);
     ref.invalidate(lowStockProvider);
-    // Use refresh() instead of invalidate() to preserve the Supabase Realtime
-    // channel subscription. invalidate() would destroy and recreate the channel,
-    // potentially missing INSERT events during the gap.
     ref.read(newOrdersProvider.notifier).refresh();
     ref.invalidate(topSellingItemsProvider);
   }
@@ -53,17 +50,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final dashboardAsync = ref.watch(dashboardProvider);
+    final isOwner = ref.watch(isOwnerProvider);
     final user = Supabase.instance.client.auth.currentUser;
     final displayName =
         user?.userMetadata?['display_name'] ??
         user?.userMetadata?['name'] ??
         'Admin';
 
-    // Listen to item form state changes for real-time dashboard updates
-    // When item is successfully updated/created, auto-refresh dashboard
     ref.listen<ItemFormState>(itemFormNotifierProvider, (previous, next) {
-      // Only refresh if status changed from non-success to success
-      // This prevents refresh on every build
       if (previous?.isSuccess != true && next.isSuccess) {
         debugPrint(
           '[DASHBOARD] Item form success detected - auto-refreshing data',
@@ -78,9 +72,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         onRefresh: () async {
           await Future.wait([
             ref.read(dashboardProvider.notifier).refresh(),
-            ref.read(lowStockProvider.notifier).refresh(),
-            ref.read(newOrdersProvider.notifier).refresh(),
-            ref.refresh(topSellingItemsProvider.future),
+            if (isOwner) ref.read(lowStockProvider.notifier).refresh(),
+            if (isOwner) ref.read(newOrdersProvider.notifier).refresh(),
+            if (isOwner) ref.refresh(topSellingItemsProvider.future),
           ]);
         },
         child: SingleChildScrollView(
@@ -89,45 +83,49 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Greeting header
               GreetingHeader(name: displayName),
               const SizedBox(height: AppSpacing.lg),
 
-              // Summary cards
               dashboardAsync.when(
                 data: (summary) => Column(
                   children: [
-                    Row(
-                      children: [
-                        Expanded(child: OmsetCard(omset: summary.omset)),
-                        const SizedBox(width: AppSpacing.md),
-                        Expanded(child: ProfitCard(profit: summary.profit)),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    TransactionCountCard(count: summary.transactionCount),
-                    const SizedBox(height: AppSpacing.md),
-                    OrderSummaryCard(
-                      orderCount: summary.orderCount,
-                      orderOmset: summary.orderOmset,
-                    ),
+                    if (isOwner) ...[
+                      Row(
+                        children: [
+                          Expanded(child: OmsetCard(omset: summary.omset)),
+                          const SizedBox(width: AppSpacing.md),
+                          Expanded(child: ProfitCard(profit: summary.profit)),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      TransactionCountCard(count: summary.transactionCount),
+                      const SizedBox(height: AppSpacing.md),
+                      OrderSummaryCard(
+                        orderCount: summary.orderCount,
+                        orderOmset: summary.orderOmset,
+                      ),
+                    ] else ...[
+                      // Kasir view: omset + transaction count only. No profit
+                      // (sensitive), no online-order summary (kasir doesn't
+                      // touch online orders).
+                      OmsetCard(omset: summary.omset),
+                      const SizedBox(height: AppSpacing.md),
+                      TransactionCountCard(count: summary.transactionCount),
+                    ],
                   ],
                 ),
-                loading: () => _buildShimmerCards(),
+                loading: () => _buildShimmerCards(isOwner: isOwner),
                 error: (error, _) => _buildErrorWidget(error),
               ),
               const SizedBox(height: AppSpacing.lg),
 
-              // New Orders Section (Story 5.3)
-              const NewOrdersSection(),
-              const SizedBox(height: AppSpacing.lg),
-
-              // Low Stock Alert Section (Story 5.2)
-              const LowStockAlert(),
-              const SizedBox(height: AppSpacing.lg),
-
-              // Top Selling Items (Story 5.4)
-              const TopSellingCard(),
+              if (isOwner) ...[
+                const NewOrdersSection(),
+                const SizedBox(height: AppSpacing.lg),
+                const LowStockAlert(),
+                const SizedBox(height: AppSpacing.lg),
+                const TopSellingCard(),
+              ],
             ],
           ),
         ),
@@ -135,7 +133,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  Widget _buildShimmerCards() {
+  Widget _buildShimmerCards({required bool isOwner}) {
+    if (!isOwner) {
+      return Column(
+        children: [
+          _ShimmerCard(),
+          const SizedBox(height: AppSpacing.md),
+          _ShimmerCard(),
+        ],
+      );
+    }
     return Column(
       children: [
         Row(

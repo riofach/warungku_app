@@ -6,6 +6,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:warungku_app/core/router/app_router.dart';
 import 'package:warungku_app/features/auth/data/providers/auth_provider.dart';
 import 'package:warungku_app/features/auth/data/models/admin_user.dart';
+import 'package:warungku_app/features/auth/data/models/user_role.dart';
 import 'package:warungku_app/features/settings/presentation/screens/settings_screen.dart';
 import 'package:warungku_app/features/orders/data/repositories/order_repository.dart';
 import 'package:warungku_app/features/settings/presentation/widgets/account_header.dart';
@@ -42,13 +43,15 @@ void main() {
     when(() => mockUser.email).thenReturn('test@admin.com');
     when(() => mockUser.name).thenReturn('Test Admin');
     when(() => mockUser.isOwner).thenReturn(true); // Default to owner
-    when(() => mockUser.role).thenReturn('owner');
+    when(() => mockUser.isKasir).thenReturn(false);
+    when(() => mockUser.role).thenReturn(UserRole.owner);
   });
 
   Widget createTestWidget(Widget child, {bool isOwner = true, GoRouter? router}) {
     // Update mock user based on role
     when(() => mockUser.isOwner).thenReturn(isOwner);
-    when(() => mockUser.role).thenReturn(isOwner ? 'owner' : 'admin');
+    when(() => mockUser.isKasir).thenReturn(!isOwner);
+    when(() => mockUser.role).thenReturn(isOwner ? UserRole.owner : UserRole.kasir);
 
     return ProviderScope(
         overrides: [

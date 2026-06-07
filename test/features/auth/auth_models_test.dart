@@ -1,12 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:warungku_app/features/auth/data/models/auth_result.dart';
 import 'package:warungku_app/features/auth/data/models/admin_user.dart';
+import 'package:warungku_app/features/auth/data/models/user_role.dart';
 
 void main() {
   group('AuthResult', () {
     test('should create success result', () {
       final result = AuthResult.success();
-      
+
       expect(result.success, true);
       expect(result.errorMessage, null);
       expect(result.errorCode, null);
@@ -14,14 +15,14 @@ void main() {
 
     test('should create error result with message', () {
       final result = AuthResult.error('Test error');
-      
+
       expect(result.success, false);
       expect(result.errorMessage, 'Test error');
     });
 
     test('should create error result with code', () {
       final result = AuthResult.error('Test error', code: 'test_code');
-      
+
       expect(result.success, false);
       expect(result.errorMessage, 'Test error');
       expect(result.errorCode, 'test_code');
@@ -30,7 +31,7 @@ void main() {
     test('should handle invalid credentials exception', () {
       final exception = Exception('Invalid login credentials');
       final result = AuthResult.fromException(exception);
-      
+
       expect(result.success, false);
       expect(result.errorMessage, 'Email atau password salah');
       expect(result.errorCode, 'invalid_credentials');
@@ -39,7 +40,7 @@ void main() {
     test('should handle network exception', () {
       final exception = Exception('SocketException: Connection refused');
       final result = AuthResult.fromException(exception);
-      
+
       expect(result.success, false);
       expect(result.errorMessage, 'Tidak ada koneksi internet');
       expect(result.errorCode, 'network_error');
@@ -48,7 +49,7 @@ void main() {
     test('should handle rate limit exception', () {
       final exception = Exception('Too many requests');
       final result = AuthResult.fromException(exception);
-      
+
       expect(result.success, false);
       expect(result.errorMessage, 'Terlalu banyak percobaan. Coba lagi nanti.');
       expect(result.errorCode, 'rate_limit');
@@ -57,7 +58,7 @@ void main() {
     test('should handle unknown exception with default message', () {
       final exception = Exception('Unknown error');
       final result = AuthResult.fromException(exception);
-      
+
       expect(result.success, false);
       expect(result.errorMessage, 'Terjadi kesalahan. Silakan coba lagi.');
     });
@@ -75,11 +76,11 @@ void main() {
       };
 
       final user = AdminUser.fromJson(json);
-      
+
       expect(user.id, 'test-id-123');
       expect(user.email, 'admin@warungku.com');
       expect(user.name, 'Admin Test');
-      expect(user.role, 'owner');
+      expect(user.role, UserRole.owner);
       expect(user.isOwner, true);
     });
 
@@ -88,18 +89,18 @@ void main() {
         id: '1',
         email: 'admin@test.com',
         name: 'John Doe',
-        role: 'admin',
+        role: UserRole.kasir,
         createdAt: DateTime.now(),
       );
-      
+
       final userWithoutName = AdminUser(
         id: '2',
         email: 'admin@test.com',
         name: null,
-        role: 'admin',
+        role: UserRole.kasir,
         createdAt: DateTime.now(),
       );
-      
+
       expect(userWithName.displayName, 'John Doe');
       expect(userWithoutName.displayName, 'admin');
     });
@@ -109,26 +110,26 @@ void main() {
         id: '1',
         email: 'admin@test.com',
         name: 'John Doe',
-        role: 'admin',
+        role: UserRole.kasir,
         createdAt: DateTime.now(),
       );
-      
+
       final userWithSingleName = AdminUser(
         id: '2',
         email: 'admin@test.com',
         name: 'John',
-        role: 'admin',
+        role: UserRole.kasir,
         createdAt: DateTime.now(),
       );
-      
+
       final userWithoutName = AdminUser(
         id: '3',
         email: 'admin@test.com',
         name: null,
-        role: 'admin',
+        role: UserRole.kasir,
         createdAt: DateTime.now(),
       );
-      
+
       expect(userWithFullName.initials, 'JD');
       expect(userWithSingleName.initials, 'J');
       expect(userWithoutName.initials, 'A');
@@ -138,19 +139,32 @@ void main() {
       final owner = AdminUser(
         id: '1',
         email: 'owner@test.com',
-        role: 'owner',
+        role: UserRole.owner,
         createdAt: DateTime.now(),
       );
-      
-      final admin = AdminUser(
+
+      final kasir = AdminUser(
         id: '2',
-        email: 'admin@test.com',
-        role: 'admin',
+        email: 'kasir@test.com',
+        role: UserRole.kasir,
         createdAt: DateTime.now(),
       );
-      
+
       expect(owner.isOwner, true);
-      expect(admin.isOwner, false);
+      expect(kasir.isOwner, false);
+      expect(kasir.isKasir, true);
+    });
+
+    test('null role does not default to owner (default-deny)', () {
+      final unknown = AdminUser(
+        id: '1',
+        email: 'u@test.com',
+        role: null,
+        createdAt: DateTime.now(),
+      );
+      expect(unknown.isOwner, false);
+      expect(unknown.isKasir, false);
+      expect(unknown.isRoleUnknown, true);
     });
 
     test('should convert to JSON correctly', () {
@@ -158,42 +172,42 @@ void main() {
         id: 'test-id',
         email: 'admin@test.com',
         name: 'Test Admin',
-        role: 'admin',
+        role: UserRole.kasir,
         createdAt: DateTime(2026, 1, 19, 10, 0, 0),
       );
-      
+
       final json = user.toJson();
-      
+
       expect(json['id'], 'test-id');
       expect(json['email'], 'admin@test.com');
       expect(json['name'], 'Test Admin');
-      expect(json['role'], 'admin');
+      expect(json['role'], 'kasir');
     });
 
     test('should support equality comparison', () {
       final user1 = AdminUser(
         id: 'same-id',
         email: 'admin@test.com',
-        role: 'admin',
+        role: UserRole.kasir,
         createdAt: DateTime.now(),
       );
-      
+
       final user2 = AdminUser(
         id: 'same-id',
         email: 'different@test.com',
-        role: 'owner',
+        role: UserRole.owner,
         createdAt: DateTime.now(),
       );
-      
+
       final user3 = AdminUser(
         id: 'different-id',
         email: 'admin@test.com',
-        role: 'admin',
+        role: UserRole.kasir,
         createdAt: DateTime.now(),
       );
-      
-      expect(user1 == user2, true); // Same ID
-      expect(user1 == user3, false); // Different ID
+
+      expect(user1 == user2, true);
+      expect(user1 == user3, false);
     });
 
     test('should create copy with updated fields', () {
@@ -201,12 +215,12 @@ void main() {
         id: 'test-id',
         email: 'admin@test.com',
         name: 'Original',
-        role: 'admin',
+        role: UserRole.kasir,
         createdAt: DateTime.now(),
       );
-      
+
       final copy = original.copyWith(name: 'Updated');
-      
+
       expect(copy.id, original.id);
       expect(copy.email, original.email);
       expect(copy.name, 'Updated');

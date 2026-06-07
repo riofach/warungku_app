@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../auth/data/models/user_role.dart';
 import '../models/admin_account.dart';
 import '../repositories/admin_management_repository.dart';
 
@@ -166,11 +167,12 @@ class CreateAdminNotifier extends Notifier<CreateAdminState> {
     return CreateAdminState.initial();
   }
 
-  /// Create new admin
+  /// Create new account (owner or kasir).
   Future<bool> createAdmin({
     required String email,
     required String password,
     required String name,
+    required UserRole role,
   }) async {
     state = CreateAdminState.loading();
 
@@ -179,6 +181,7 @@ class CreateAdminNotifier extends Notifier<CreateAdminState> {
       email: email,
       password: password,
       name: name,
+      role: role,
     );
 
     if (result.success) {
@@ -187,7 +190,7 @@ class CreateAdminNotifier extends Notifier<CreateAdminState> {
       ref.read(adminListNotifierProvider.notifier).refresh();
       return true;
     } else {
-      state = CreateAdminState.error(result.errorMessage ?? 'Gagal membuat admin');
+      state = CreateAdminState.error(result.errorMessage ?? 'Gagal membuat akun');
       return false;
     }
   }

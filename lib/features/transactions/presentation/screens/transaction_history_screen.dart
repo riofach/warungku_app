@@ -1,147 +1,82 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/widgets/loading_widget.dart';
+import '../../../../core/widgets/date_range_filter_bar.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
-import '../../../../core/widgets/error_widget.dart';
+import '../../../../core/widgets/paginated_list_view.dart';
 import '../../data/models/transaction_model.dart';
 import '../../data/providers/transaction_provider.dart';
 import '../widgets/transaction_detail_sheet.dart';
 
-/// Transaction History Screen
-/// Displays all transactions with admin info (FR5)
+/// Sales history — "Riwayat Penjualan".
+/// Lists all POS transactions (newest first) with infinite-scroll pagination
+/// and an optional date-range filter. Tapping a row opens the existing
+/// transaction detail bottom sheet.
 class TransactionHistoryScreen extends ConsumerWidget {
   const TransactionHistoryScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final transactionsAsync = ref.watch(transactionsProvider);
+    final state = ref.watch(salesHistoryProvider);
+    final notifier = ref.read(salesHistoryProvider.notifier);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Riwayat Transaksi'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.filter_list),
-            onPressed: () => _showFilterBottomSheet(context, ref),
-            tooltip: 'Filter',
+      appBar: AppBar(title: const Text('Riwayat Penjualan')),
+      body: Column(
+        children: [
+          DateRangeFilterBar(
+            fromDate: state.fromDate,
+            toDate: state.toDate,
+            onChanged: (range) => _applyRange(notifier, range),
+          ),
+          Expanded(
+            child: PaginatedListView<Transaction>(
+              state: state,
+              onRefresh: notifier.refresh,
+              onLoadMore: notifier.loadMore,
+              loadingMessage: 'Memuat transaksi...',
+              emptyState: EmptyStateWidget(
+                icon: Icons.receipt_long_outlined,
+                title: state.hasDateFilter
+                    ? 'Tidak ada transaksi'
+                    : 'Belum ada transaksi',
+                subtitle: state.hasDateFilter
+                    ? 'Tidak ada penjualan pada rentang tanggal ini'
+                    : 'Transaksi POS akan muncul di sini',
+              ),
+              itemBuilder: (context, trx) => _TransactionCard(transaction: trx),
+            ),
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          ref.invalidate(transactionsProvider);
-        },
-        child: transactionsAsync.when(
-          data: (transactions) {
-            if (transactions.isEmpty) {
-              return const EmptyStateWidget(
-                icon: Icons.receipt_long_outlined,
-                title: 'Belum ada transaksi',
-                subtitle: 'Transaksi POS akan muncul di sini',
-              );
-            }
-            return _TransactionList(transactions: transactions);
-          },
-          loading: () => const LoadingWidget(message: 'Memuat transaksi...'),
-          error: (error, stack) => AppErrorWidget(
-            message: 'Gagal memuat transaksi',
-            onRetry: () => ref.invalidate(transactionsProvider),
-          ),
-        ),
-      ),
     );
   }
 
-  void _showFilterBottomSheet(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => const _FilterBottomSheet(),
-    );
-  }
-}
-
-/// Transaction list widget
-class _TransactionList extends StatelessWidget {
-  final List<Transaction> transactions;
-
-  const _TransactionList({required this.transactions});
-
-  @override
-  Widget build(BuildContext context) {
-    // Group transactions by date
-    final groupedTransactions = _groupByDate(transactions);
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      itemCount: groupedTransactions.length,
-      itemBuilder: (context, index) {
-        final entry = groupedTransactions.entries.elementAt(index);
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _DateHeader(date: entry.key),
-            ...entry.value.map((trx) => _TransactionCard(transaction: trx)),
-            const SizedBox(height: AppSpacing.sm),
-          ],
-        );
-      },
-    );
-  }
-
-  Map<String, List<Transaction>> _groupByDate(List<Transaction> transactions) {
-    final Map<String, List<Transaction>> grouped = {};
-    for (final trx in transactions) {
-      final dateKey = _formatDateKey(trx.createdAt);
-      if (grouped.containsKey(dateKey)) {
-        grouped[dateKey]!.add(trx);
-      } else {
-        grouped[dateKey] = [trx];
-      }
+  void _applyRange(SalesHistoryNotifier notifier, DateTimeRange? range) {
+    if (range == null) {
+      notifier.setDateRange(null, null);
+      return;
     }
-    return grouped;
-  }
-
-  String _formatDateKey(DateTime date) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final yesterday = today.subtract(const Duration(days: 1));
-    final transactionDate = DateTime(date.year, date.month, date.day);
-
-    if (transactionDate == today) {
-      return 'Hari Ini';
-    } else if (transactionDate == yesterday) {
-      return 'Kemarin';
-    } else {
-      return '${date.day}/${date.month}/${date.year}';
-    }
-  }
-}
-
-/// Date header for grouped transactions
-class _DateHeader extends StatelessWidget {
-  final String date;
-
-  const _DateHeader({required this.date});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-      child: Text(
-        date,
-        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-          fontWeight: FontWeight.bold,
-          color: AppColors.textSecondary,
-        ),
-      ),
+    final from = DateTime(
+      range.start.year,
+      range.start.month,
+      range.start.day,
     );
+    final to = DateTime(
+      range.end.year,
+      range.end.month,
+      range.end.day,
+      23,
+      59,
+      59,
+      999,
+    );
+    notifier.setDateRange(from, to);
   }
 }
 
-/// Transaction card widget showing transaction details with admin info
+/// Transaction card widget showing transaction details with admin info (FR5)
 class _TransactionCard extends StatelessWidget {
   final Transaction transaction;
 
@@ -166,8 +101,8 @@ class _TransactionCard extends StatelessWidget {
                   Text(
                     transaction.code,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                          fontWeight: FontWeight.bold,
+                        ),
                   ),
                   _PaymentMethodBadge(method: transaction.paymentMethod),
                 ],
@@ -181,15 +116,15 @@ class _TransactionCard extends StatelessWidget {
                   Text(
                     transaction.formattedTotal,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
-                    ),
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
                   ),
                   Text(
                     transaction.shortDate,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
+                          color: AppColors.textSecondary,
+                        ),
                   ),
                 ],
               ),
@@ -199,12 +134,10 @@ class _TransactionCard extends StatelessWidget {
               // Admin info row (FR5: Track Transactions by Admin)
               Row(
                 children: [
-                  // Admin avatar
                   CircleAvatar(
                     radius: 14,
-                    backgroundColor: AppColors.primaryLight.withValues(
-                      alpha: 0.3,
-                    ),
+                    backgroundColor:
+                        AppColors.primaryLight.withValues(alpha: 0.3),
                     child: Text(
                       transaction.admin?.initials ?? '?',
                       style: const TextStyle(
@@ -215,25 +148,27 @@ class _TransactionCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: AppSpacing.sm),
-                  // Admin name
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'Diproses oleh',
-                          style: Theme.of(context).textTheme.bodySmall
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
                               ?.copyWith(color: AppColors.textTertiary),
                         ),
                         Text(
                           transaction.adminName,
-                          style: Theme.of(context).textTheme.bodyMedium
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
                               ?.copyWith(fontWeight: FontWeight.w500),
                         ),
                       ],
                     ),
                   ),
-                  // Item count
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: AppSpacing.sm,
@@ -246,8 +181,8 @@ class _TransactionCard extends StatelessWidget {
                     child: Text(
                       '${transaction.itemCount} item',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
+                            color: AppColors.textSecondary,
+                          ),
                     ),
                   ),
                 ],
@@ -309,188 +244,12 @@ class _PaymentMethodBadge extends StatelessWidget {
           Text(
             isQris ? 'QRIS' : 'Tunai',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: isQris ? AppColors.primary : AppColors.secondary,
-              fontWeight: FontWeight.w600,
-            ),
+                  color: isQris ? AppColors.primary : AppColors.secondary,
+                  fontWeight: FontWeight.w600,
+                ),
           ),
         ],
       ),
-    );
-  }
-}
-
-/// Filter bottom sheet
-class _FilterBottomSheet extends ConsumerWidget {
-  const _FilterBottomSheet();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final filter = ref.watch(transactionFilterProvider);
-
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Filter Transaksi',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              TextButton(
-                onPressed: () {
-                  ref.read(transactionFilterProvider.notifier).resetFilters();
-                  ref.invalidate(transactionsProvider);
-                  Navigator.pop(context);
-                },
-                child: const Text('Reset'),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            'Periode',
-            style: Theme.of(
-              context,
-            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Wrap(
-            spacing: AppSpacing.sm,
-            children: [
-              _FilterChip(
-                label: 'Hari Ini',
-                selected: _isTodaySelected(filter),
-                onSelected: () => _selectToday(ref, context),
-              ),
-              _FilterChip(
-                label: 'Minggu Ini',
-                selected: _isThisWeekSelected(filter),
-                onSelected: () => _selectThisWeek(ref, context),
-              ),
-              _FilterChip(
-                label: 'Bulan Ini',
-                selected: _isThisMonthSelected(filter),
-                onSelected: () => _selectThisMonth(ref, context),
-              ),
-              _FilterChip(
-                label: 'Semua',
-                selected: filter.fromDate == null && filter.toDate == null,
-                onSelected: () {
-                  ref
-                      .read(transactionFilterProvider.notifier)
-                      .setDateRange(null, null);
-                  ref.invalidate(transactionsProvider);
-                  Navigator.pop(context);
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.lg),
-        ],
-      ),
-    );
-  }
-
-  bool _isTodaySelected(TransactionFilterState filter) {
-    if (filter.fromDate == null) return false;
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final filterDate = DateTime(
-      filter.fromDate!.year,
-      filter.fromDate!.month,
-      filter.fromDate!.day,
-    );
-    return filterDate == today;
-  }
-
-  bool _isThisWeekSelected(TransactionFilterState filter) {
-    if (filter.fromDate == null) return false;
-    final now = DateTime.now();
-    final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
-    final filterDate = DateTime(
-      filter.fromDate!.year,
-      filter.fromDate!.month,
-      filter.fromDate!.day,
-    );
-    return filterDate ==
-        DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
-  }
-
-  bool _isThisMonthSelected(TransactionFilterState filter) {
-    if (filter.fromDate == null) return false;
-    final now = DateTime.now();
-    final startOfMonth = DateTime(now.year, now.month, 1);
-    final filterDate = DateTime(
-      filter.fromDate!.year,
-      filter.fromDate!.month,
-      filter.fromDate!.day,
-    );
-    return filterDate == startOfMonth;
-  }
-
-  void _selectToday(WidgetRef ref, BuildContext context) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final tomorrow = today.add(const Duration(days: 1));
-    ref.read(transactionFilterProvider.notifier).setDateRange(today, tomorrow);
-    ref.invalidate(transactionsProvider);
-    Navigator.pop(context);
-  }
-
-  void _selectThisWeek(WidgetRef ref, BuildContext context) {
-    final now = DateTime.now();
-    final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
-    final startDate = DateTime(
-      startOfWeek.year,
-      startOfWeek.month,
-      startOfWeek.day,
-    );
-    final endDate = startDate.add(const Duration(days: 7));
-    ref
-        .read(transactionFilterProvider.notifier)
-        .setDateRange(startDate, endDate);
-    ref.invalidate(transactionsProvider);
-    Navigator.pop(context);
-  }
-
-  void _selectThisMonth(WidgetRef ref, BuildContext context) {
-    final now = DateTime.now();
-    final startOfMonth = DateTime(now.year, now.month, 1);
-    final endOfMonth = DateTime(now.year, now.month + 1, 1);
-    ref
-        .read(transactionFilterProvider.notifier)
-        .setDateRange(startOfMonth, endOfMonth);
-    ref.invalidate(transactionsProvider);
-    Navigator.pop(context);
-  }
-}
-
-/// Filter chip widget
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onSelected;
-
-  const _FilterChip({
-    required this.label,
-    required this.selected,
-    required this.onSelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return FilterChip(
-      label: Text(label),
-      selected: selected,
-      onSelected: (_) => onSelected(),
-      selectedColor: AppColors.primary.withValues(alpha: 0.2),
-      checkmarkColor: AppColors.primary,
     );
   }
 }

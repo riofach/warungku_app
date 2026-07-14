@@ -57,7 +57,7 @@ class SettingsScreen extends ConsumerWidget {
             SettingsTile(
               icon: Icons.receipt_long_outlined,
               title: 'Riwayat Transaksi',
-              subtitle: 'Lihat semua transaksi kasir',
+              subtitle: 'Lihat riwayat penjualan & pembelian',
               onTap: () => context.push(AppRoutes.transactionHistory),
             ),
 

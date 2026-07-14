@@ -8,6 +8,15 @@ class AppConstants {
   static const String appName = 'WarungKu';
   static const String appVersion = '1.0.0';
 
+  // Web shop (warungku_web) — customer-facing site used for order tracking &
+  // invoice download. The tracking page resolves both TRX (POS) and WRG
+  // (online) codes and hosts the "Download Invoice" action server-side.
+  static const String webBaseUrl = 'https://warungluthfan.my.id';
+
+  /// Build the public tracking page URL for a given order/transaction [code].
+  /// Example: `https://warungluthfan.my.id/tracking/TRX-20260711-0001`
+  static String trackingUrl(String code) => '$webBaseUrl/tracking/$code';
+
   // Default Settings
   static const String defaultOperatingHoursOpen = '08:00';
   static const String defaultOperatingHoursClose = '21:00';

@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/pagination/paginated_history_notifier.dart';
 import '../models/transaction_model.dart';
 import '../repositories/transaction_repository.dart';
 
@@ -161,7 +162,7 @@ final transactionFilterProvider = NotifierProvider<TransactionFilterNotifier, Tr
 final filteredTransactionsProvider = FutureProvider<List<Transaction>>((ref) async {
   final repo = ref.watch(transactionRepositoryProvider);
   final filter = ref.watch(transactionFilterProvider);
-  
+
   return repo.getTransactions(
     fromDate: filter.fromDate,
     toDate: filter.toDate,
@@ -170,3 +171,27 @@ final filteredTransactionsProvider = FutureProvider<List<Transaction>>((ref) asy
     offset: filter.offset,
   );
 });
+
+/// Infinite-scroll controller for the "Riwayat Penjualan" screen — paginates
+/// all POS transactions with an optional date range.
+class SalesHistoryNotifier extends PaginatedHistoryNotifier<Transaction> {
+  @override
+  Future<List<Transaction>> fetchPage({
+    required int limit,
+    required int offset,
+    DateTime? fromDate,
+    DateTime? toDate,
+  }) {
+    return ref.read(transactionRepositoryProvider).getTransactions(
+          limit: limit,
+          offset: offset,
+          fromDate: fromDate,
+          toDate: toDate,
+        );
+  }
+}
+
+final salesHistoryProvider =
+    NotifierProvider<SalesHistoryNotifier, PaginatedState<Transaction>>(
+  SalesHistoryNotifier.new,
+);

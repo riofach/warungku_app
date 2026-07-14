@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/confirmation_dialog.dart';
+import '../../../../core/widgets/download_invoice_button.dart';
 import '../../../../core/widgets/error_widget.dart';
 import '../../../../core/widgets/loading_widget.dart';
 import '../../../auth/data/providers/auth_provider.dart';
@@ -97,6 +98,12 @@ class OrderDetailScreen extends ConsumerWidget {
               OrderItemList(items: order.items),
               const SizedBox(height: AppSpacing.md),
               OrderSummaryCard(order: order),
+              const SizedBox(height: AppSpacing.md),
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                child: DownloadInvoiceButton(code: order.code),
+              ),
             ],
           ),
         ),

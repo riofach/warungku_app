@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart' hide ConnectionState;
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'core/services/supabase_service.dart';
@@ -159,6 +160,18 @@ class _WarungKuAppState extends ConsumerState<WarungKuApp>
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       routerConfig: router,
+      // App is Indonesian (id_ID). Register flutter_localizations so Material
+      // dialogs (date/time pickers) render in Bahasa Indonesia.
+      locale: const Locale('id', 'ID'),
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('id', 'ID'),
+        Locale('en', 'US'),
+      ],
       builder: (context, child) {
         return NewOrderNotificationOverlayHost(child: child!);
       },

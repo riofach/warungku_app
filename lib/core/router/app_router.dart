@@ -19,7 +19,9 @@ import '../../features/inventory/data/models/item_model.dart';
 import '../../features/reports/presentation/screens/reports_screen.dart';
 import '../../features/admin_management/presentation/screens/admin_list_screen.dart';
 import '../../features/transactions/presentation/screens/transaction_history_screen.dart';
+import '../../features/transactions/presentation/screens/transaction_history_hub_screen.dart';
 import '../../features/transactions/presentation/screens/transaction_detail_screen.dart';
+import '../../features/inventory/presentation/screens/purchase_history_screen.dart';
 import '../../features/transactions/data/models/transaction_model.dart' as trx_model;
 import '../../features/pos/presentation/screens/transaction_success_screen.dart';
 import '../../features/inventory/presentation/screens/purchase_flow_screen.dart';
@@ -46,6 +48,8 @@ class AppRoutes {
   static const String reports = '/reports';
   static const String adminManagement = '/admin-management';
   static const String transactionHistory = '/transaction-history';
+  static const String salesHistory = '/sales-history';
+  static const String purchaseHistory = '/purchase-history';
   static const String transactionDetail = '/transactions/detail';
   static const String transactionSuccess = '/transaction-success';
   static const String purchaseFlow = '/purchase';
@@ -202,7 +206,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.transactionHistory,
+        builder: (context, state) => const TransactionHistoryHubScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.salesHistory,
         builder: (context, state) => const TransactionHistoryScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.purchaseHistory,
+        builder: (context, state) => const PurchaseHistoryScreen(),
       ),
       GoRoute(
         path: '${AppRoutes.transactionDetail}/:id',

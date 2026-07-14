@@ -14,6 +14,7 @@ class SupabaseConstants {
   static const String tableOrderItems = 'order_items';
   static const String tableTransactions = 'transactions';
   static const String tableTransactionItems = 'transaction_items';
+  static const String tablePurchases = 'purchases';
   static const String tableSettings = 'settings';
 
   // ===========================================

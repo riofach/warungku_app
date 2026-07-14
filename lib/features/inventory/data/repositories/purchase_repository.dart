@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../core/constants/supabase_constants.dart';
 import '../../../../core/services/supabase_service.dart';
 import '../models/item_unit_model.dart';
 import '../models/purchase_model.dart';
@@ -67,6 +68,52 @@ class PurchaseRepository {
       throw Exception(e.message);
     } catch (e) {
       throw Exception('Gagal menyimpan pembelian: $e');
+    }
+  }
+
+  /// Get all purchase records (newest first), with the item name joined in.
+  ///
+  /// Supports pagination ([limit]/[offset]) and an optional date range
+  /// ([fromDate] inclusive / [toDate] inclusive) for tracking.
+  ///
+  /// Note: `purchases.admin_id` has no FK to `users`, so the admin name cannot
+  /// be embedded here — only the item name (`items(name)`) is joined.
+  Future<List<Purchase>> getPurchases({
+    int? limit,
+    int? offset,
+    DateTime? fromDate,
+    DateTime? toDate,
+  }) async {
+    try {
+      PostgrestFilterBuilder query = SupabaseService.client
+          .from(SupabaseConstants.tablePurchases)
+          .select('*, items(name)');
+
+      if (fromDate != null) {
+        query = query.gte('created_at', fromDate.toIso8601String());
+      }
+      if (toDate != null) {
+        query = query.lte('created_at', toDate.toIso8601String());
+      }
+
+      PostgrestTransformBuilder transformQuery =
+          query.order('created_at', ascending: false);
+
+      if (limit != null && offset != null) {
+        transformQuery = transformQuery.range(offset, offset + limit - 1);
+      } else if (limit != null) {
+        transformQuery = transformQuery.limit(limit);
+      }
+
+      final response = await transformQuery.timeout(_timeout);
+
+      return (response as List)
+          .map((json) => Purchase.fromJson(json as Map<String, dynamic>))
+          .toList();
+    } on TimeoutException {
+      throw Exception('Koneksi timeout. Silakan coba lagi.');
+    } catch (e) {
+      throw Exception('Gagal memuat riwayat pembelian: $e');
     }
   }
 
